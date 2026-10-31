@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "779586659053",
+    "project_id": "ragir-chat",
+    "storage_bucket": "ragir-chat.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:779586659053:android:25763650bfbbe98f7662e4",
+        "android_client_info": {
+          "package_name": "com.nasreen.ragirchat"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC5D6Wwd_rRwt-naCU_4O-tLIvVpecaaG0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
