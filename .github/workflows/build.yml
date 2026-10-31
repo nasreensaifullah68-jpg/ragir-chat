@@ -49,7 +49,15 @@ jobs:
 
       - run: flutter pub get
 
-      - run: flutter build apk --debug
+      - name: Build APK
+        run: |
+          set +e
+          flutter build apk --debug 2>&1 | tee build.log
+          STATUS=${PIPESTATUS[0]}
+          if [ $STATUS -ne 0 ]; then
+            grep -E "Error" build.log | head -n 8 | while read -r line; do echo "::error::$line"; done
+            exit $STATUS
+          fi
 
       - uses: softprops/action-gh-release@v2
         with:
