@@ -28,12 +28,31 @@ jobs:
             flutter create --platforms=android --org com.nasreen.ragirchat --project-name ragir_chat .
           fi
 
+      - name: Make Firebase options from google-services.json
+        run: |
+          API_KEY=$(jq -r '.client[0].api_key[0].current_key' google-services.json)
+          APP_ID=$(jq -r '.client[0].client_info.mobilesdk_app_id' google-services.json)
+          SENDER=$(jq -r '.project_info.project_number' google-services.json)
+          PROJECT=$(jq -r '.project_info.project_id' google-services.json)
+          BUCKET=$(jq -r '.project_info.storage_bucket' google-services.json)
+          cat > lib/firebase_options.dart <<EOF
+          import 'package:firebase_core/firebase_core.dart';
+
+          const firebaseOptions = FirebaseOptions(
+            apiKey: '$API_KEY',
+            appId: '$APP_ID',
+            messagingSenderId: '$SENDER',
+            projectId: '$PROJECT',
+            storageBucket: '$BUCKET',
+          );
+          EOF
+
       - run: flutter pub get
 
-      - run: flutter build apk --release --split-per-abi
+      - run: flutter build apk --debug
 
       - uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ github.run_number }}
           name: Ragir Chat v${{ github.run_number }}
-          files: build/app/outputs/flutter-apk/*-release.apk
+          files: build/app/outputs/flutter-apk/app-debug.apk
