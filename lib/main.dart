@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
@@ -29,7 +30,7 @@ class RagirChatApp extends StatelessWidget {
             return const Scaffold(
                 body: Center(child: CircularProgressIndicator()));
           }
-          return snap.data != null ? const HomeScreen() : const LoginScreen();
+          return snap.data != null ? const HomeGate() : const LoginScreen();
         },
       ),
     );
@@ -228,8 +229,130 @@ class _OtpScreenState extends State<OtpScreen> {
   }
 }
 
+class HomeGate extends StatelessWidget {
+  const HomeGate({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final user = FirebaseAuth.instance.currentUser!;
+    return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+      stream: FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .snapshots(),
+      builder: (context, snap) {
+        if (snap.hasError) {
+          return Scaffold(
+            body: Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Directionality(
+                  textDirection: TextDirection.ltr,
+                  child: Text('خرابی: ${snap.error}'),
+                ),
+              ),
+            ),
+          );
+        }
+        if (!snap.hasData) {
+          return const Scaffold(
+              body: Center(child: CircularProgressIndicator()));
+        }
+        final name = snap.data!.data()?['name'] as String?;
+        if (name == null || name.isEmpty) return const NameScreen();
+        return HomeScreen(name: name);
+      },
+    );
+  }
+}
+
+class NameScreen extends StatefulWidget {
+  const NameScreen({super.key});
+
+  @override
+  State<NameScreen> createState() => _NameScreenState();
+}
+
+class _NameScreenState extends State<NameScreen> {
+  final controller = TextEditingController();
+  bool loading = false;
+
+  Future<void> save() async {
+    final name = controller.text.trim();
+    if (name.isEmpty) {
+      showMsg(context, 'اپنا نام لکھیں');
+      return;
+    }
+    setState(() => loading = true);
+    try {
+      final user = FirebaseAuth.instance.currentUser!;
+      await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
+        'name': name,
+        'phone': user.phoneNumber,
+        'createdAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => loading = false);
+      showMsg(context, 'خرابی: $e');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF4FBF7),
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.account_circle, color: green, size: 110),
+              const SizedBox(height: 16),
+              const Text('آپ کا نام کیا ہے؟',
+                  style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 24),
+              TextField(
+                controller: controller,
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 26),
+                decoration: InputDecoration(
+                  filled: true,
+                  fillColor: Colors.white,
+                  hintText: 'یہاں نام لکھیں',
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16)),
+                ),
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                height: 64,
+                child: FilledButton(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: green,
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16)),
+                  ),
+                  onPressed: loading ? null : save,
+                  child: loading
+                      ? const CircularProgressIndicator(color: Colors.white)
+                      : const Text('محفوظ کریں',
+                          style: TextStyle(fontSize: 24)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class HomeScreen extends StatelessWidget {
-  const HomeScreen({super.key});
+  final String name;
+  const HomeScreen({super.key, required this.name});
 
   @override
   Widget build(BuildContext context) {
@@ -248,8 +371,9 @@ class HomeScreen extends StatelessWidget {
             children: [
               const Icon(Icons.check_circle, color: green, size: 90),
               const SizedBox(height: 16),
-              const Text('خوش آمدید!',
-                  style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold)),
+              Text('خوش آمدید، $name!',
+                  style: const TextStyle(
+                      fontSize: 30, fontWeight: FontWeight.bold)),
               const SizedBox(height: 8),
               Directionality(
                 textDirection: TextDirection.ltr,
