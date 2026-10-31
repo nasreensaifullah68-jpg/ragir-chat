@@ -9,6 +9,9 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  firebase_core: any
+  firebase_auth: any
+  cloud_firestore: any
 
 flutter:
   uses-material-design: true
