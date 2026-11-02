@@ -1,11 +1,78 @@
+import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'main.dart';
 
-class HomeScreen extends StatelessWidget {
+String lastSeenText(Map<String, dynamic>? u) {
+  if (u == null) return '';
+  final ts = u['lastSeen'] as Timestamp?;
+  if (ts == null) return '';
+  final t = ts.toDate();
+  final now = DateTime.now();
+  if (u['online'] == true && now.difference(t).inSeconds.abs() < 100) {
+    return 'آن لائن';
+  }
+  final l = t.toLocal();
+  final h = l.hour.toString().padLeft(2, '0');
+  final m = l.minute.toString().padLeft(2, '0');
+  final same = l.year == now.year && l.month == now.month && l.day == now.day;
+  return same ? 'آخری بار آج $h:$m' : 'آخری بار ${l.day}/${l.month} $h:$m';
+}
+
+class HomeScreen extends StatefulWidget {
   final String name;
   const HomeScreen({super.key, required this.name});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
+  Timer? timer;
+
+  Future<void> setOnline(bool on) async {
+    final u = FirebaseAuth.instance.currentUser;
+    if (u == null) return;
+    try {
+      await FirebaseFirestore.instance.collection('users').doc(u.uid).set({
+        'online': on,
+        'lastSeen': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+    } catch (_) {}
+  }
+
+  void startTimer() {
+    timer?.cancel();
+    timer = Timer.periodic(const Duration(seconds: 40), (_) => setOnline(true));
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    setOnline(true);
+    startTimer();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      setOnline(true);
+      startTimer();
+    } else if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.detached) {
+      timer?.cancel();
+      setOnline(false);
+    }
+  }
+
+  @override
+  void dispose() {
+    timer?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
 
   String normalize(String input) {
     var digits = input.replaceAll(RegExp(r'[^0-9]'), '');
@@ -67,7 +134,7 @@ class HomeScreen extends StatelessWidget {
       final otherName = (other.data()['name'] as String?) ?? phone;
       await FirebaseFirestore.instance.collection('chats').doc(chatId).set({
         'participants': ids,
-        'names': {me.uid: name, other.id: otherName},
+        'names': {me.uid: widget.name, other.id: otherName},
       }, SetOptions(merge: true));
       if (!context.mounted) return;
       Navigator.of(context).push(MaterialPageRoute(
@@ -84,14 +151,17 @@ class HomeScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: softBg,
       appBar: AppBar(
-        title: Text('رَاگیر چیٹ - $name'),
+        title: Text('رَاگیر چیٹ - ${widget.name}'),
         backgroundColor: green,
         foregroundColor: Colors.white,
         actions: [
           IconButton(
             tooltip: 'باہر نکلیں',
             icon: const Icon(Icons.logout),
-            onPressed: () => FirebaseAuth.instance.signOut(),
+            onPressed: () async {
+              await setOnline(false);
+              await FirebaseAuth.instance.signOut();
+            },
           ),
         ],
       ),
@@ -150,6 +220,16 @@ class HomeScreen extends StatelessWidget {
                   ids.firstWhere((x) => x != myId, orElse: () => myId);
               final otherName = (names[otherId] as String?) ?? 'نامعلوم';
               final last = (d['lastMessage'] as String?) ?? 'پیغام لکھیں';
+              final lastSender = d['lastSenderId'] as String?;
+              final upd = d['updatedAt'] as Timestamp?;
+              final lr = d['lastRead'] as Map<String, dynamic>?;
+              final myRead = lr?[myId] as Timestamp?;
+              final unread = lastSender != null &&
+                  lastSender != myId &&
+                  upd != null &&
+                  (myRead == null ||
+                      myRead.millisecondsSinceEpoch <
+                          upd.millisecondsSinceEpoch);
               return ListTile(
                 contentPadding:
                     const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
@@ -167,7 +247,18 @@ class HomeScreen extends StatelessWidget {
                 subtitle: Text(last,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 18)),
+                    style: TextStyle(
+                        fontSize: 18,
+                        fontWeight:
+                            unread ? FontWeight.bold : FontWeight.normal)),
+                trailing: unread
+                    ? Container(
+                        width: 16,
+                        height: 16,
+                        decoration: const BoxDecoration(
+                            color: green, shape: BoxShape.circle),
+                      )
+                    : null,
                 onTap: () => Navigator.of(context).push(MaterialPageRoute(
                     builder: (_) => ChatScreen(
                         chatId: docs[i].id, otherName: otherName))),
@@ -192,13 +283,43 @@ class ChatScreen extends StatefulWidget {
 class _ChatScreenState extends State<ChatScreen> {
   final controller = TextEditingController();
   final me = FirebaseAuth.instance.currentUser!;
+  Timer? tick;
+  String? markedId;
+
+  DocumentReference<Map<String, dynamic>> get chatRef =>
+      FirebaseFirestore.instance.collection('chats').doc(widget.chatId);
+
+  String get otherId =>
+      widget.chatId.split('_').firstWhere((x) => x != me.uid,
+          orElse: () => me.uid);
+
+  @override
+  void initState() {
+    super.initState();
+    tick = Timer.periodic(const Duration(seconds: 30), (_) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    tick?.cancel();
+    controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> markRead() async {
+    try {
+      await chatRef.update({
+        'lastRead.${me.uid}': FieldValue.serverTimestamp(),
+      });
+    } catch (_) {}
+  }
 
   Future<void> send() async {
     final text = controller.text.trim();
     if (text.isEmpty) return;
     controller.clear();
-    final chatRef =
-        FirebaseFirestore.instance.collection('chats').doc(widget.chatId);
     try {
       await chatRef.collection('messages').add({
         'text': text,
@@ -207,7 +328,9 @@ class _ChatScreenState extends State<ChatScreen> {
       });
       await chatRef.update({
         'lastMessage': text,
+        'lastSenderId': me.uid,
         'updatedAt': FieldValue.serverTimestamp(),
+        'lastRead.${me.uid}': FieldValue.serverTimestamp(),
       });
     } catch (e) {
       if (!mounted) return;
@@ -227,72 +350,129 @@ class _ChatScreenState extends State<ChatScreen> {
     return Scaffold(
       backgroundColor: softBg,
       appBar: AppBar(
-        title: Text(widget.otherName),
+        title: StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+          stream: FirebaseFirestore.instance
+              .collection('users')
+              .doc(otherId)
+              .snapshots(),
+          builder: (context, s) {
+            final status = lastSeenText(s.data?.data());
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(widget.otherName, style: const TextStyle(fontSize: 20)),
+                if (status.isNotEmpty)
+                  Text(status, style: const TextStyle(fontSize: 13)),
+              ],
+            );
+          },
+        ),
         backgroundColor: green,
         foregroundColor: Colors.white,
       ),
       body: Column(
         children: [
           Expanded(
-            child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-              stream: FirebaseFirestore.instance
-                  .collection('chats')
-                  .doc(widget.chatId)
-                  .collection('messages')
-                  .orderBy('createdAt', descending: true)
-                  .limit(200)
-                  .snapshots(),
-              builder: (context, snap) {
-                if (snap.hasError) {
-                  return Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(24),
-                      child: Directionality(
-                        textDirection: TextDirection.ltr,
-                        child: Text('خرابی: ${snap.error}'),
-                      ),
-                    ),
-                  );
-                }
-                if (!snap.hasData) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-                final docs = snap.data!.docs;
-                return ListView.builder(
-                  reverse: true,
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  itemCount: docs.length,
-                  itemBuilder: (context, i) {
-                    final m = docs[i].data();
-                    final mine = m['senderId'] == me.uid;
-                    final ts = m['createdAt'] as Timestamp?;
-                    return Align(
-                      alignment:
-                          mine ? Alignment.centerRight : Alignment.centerLeft,
-                      child: Container(
-                        constraints: BoxConstraints(
-                            maxWidth: MediaQuery.of(context).size.width * 0.75),
-                        margin: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 4),
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 14, vertical: 10),
-                        decoration: BoxDecoration(
-                          color:
-                              mine ? const Color(0xFFD6F5E5) : Colors.white,
-                          borderRadius: BorderRadius.circular(16),
+            child: StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+              stream: chatRef.snapshots(),
+              builder: (context, chatSnap) {
+                final lr =
+                    chatSnap.data?.data()?['lastRead'] as Map<String, dynamic>?;
+                final otherRead = lr?[otherId] as Timestamp?;
+                return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                  stream: chatRef
+                      .collection('messages')
+                      .orderBy('createdAt', descending: true)
+                      .limit(200)
+                      .snapshots(),
+                  builder: (context, snap) {
+                    if (snap.hasError) {
+                      return Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(24),
+                          child: Directionality(
+                            textDirection: TextDirection.ltr,
+                            child: Text('خرابی: ${snap.error}'),
+                          ),
                         ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text((m['text'] as String?) ?? '',
-                                style: const TextStyle(fontSize: 20)),
-                            if (ts != null)
-                              Text(fmt(ts.toDate()),
-                                  style: const TextStyle(
-                                      fontSize: 12, color: Colors.black54)),
-                          ],
-                        ),
-                      ),
+                      );
+                    }
+                    if (!snap.hasData) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+                    final docs = snap.data!.docs;
+                    if (docs.isNotEmpty) {
+                      final newest = docs.first;
+                      if (newest.data()['senderId'] != me.uid &&
+                          newest.id != markedId) {
+                        markedId = newest.id;
+                        WidgetsBinding.instance
+                            .addPostFrameCallback((_) => markRead());
+                      }
+                    }
+                    return ListView.builder(
+                      reverse: true,
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      itemCount: docs.length,
+                      itemBuilder: (context, i) {
+                        final m = docs[i].data();
+                        final mine = m['senderId'] == me.uid;
+                        final ts = m['createdAt'] as Timestamp?;
+                        final read = ts != null &&
+                            otherRead != null &&
+                            otherRead.millisecondsSinceEpoch >=
+                                ts.millisecondsSinceEpoch;
+                        return Align(
+                          alignment: mine
+                              ? Alignment.centerRight
+                              : Alignment.centerLeft,
+                          child: Container(
+                            constraints: BoxConstraints(
+                                maxWidth:
+                                    MediaQuery.of(context).size.width * 0.75),
+                            margin: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 4),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 14, vertical: 10),
+                            decoration: BoxDecoration(
+                              color: mine
+                                  ? const Color(0xFFD6F5E5)
+                                  : Colors.white,
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text((m['text'] as String?) ?? '',
+                                    style: const TextStyle(fontSize: 20)),
+                                Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    if (ts != null)
+                                      Text(fmt(ts.toDate()),
+                                          style: const TextStyle(
+                                              fontSize: 12,
+                                              color: Colors.black54)),
+                                    if (mine) const SizedBox(width: 4),
+                                    if (mine)
+                                      Icon(
+                                        ts == null
+                                            ? Icons.access_time
+                                            : (read
+                                                ? Icons.done_all
+                                                : Icons.done),
+                                        size: 16,
+                                        color: read
+                                            ? Colors.blue
+                                            : Colors.black45,
+                                      ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
                     );
                   },
                 );
