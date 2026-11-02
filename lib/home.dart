@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'main.dart';
+import 'status.dart';
 
 String lastSeenText(Map<String, dynamic>? u) {
   if (u == null) return '';
@@ -155,6 +156,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         backgroundColor: green,
         foregroundColor: Colors.white,
         actions: [
+          IconButton(
+            tooltip: 'اسٹیٹس',
+            icon: const Icon(Icons.circle_outlined),
+            onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+                builder: (_) => StatusScreen(name: widget.name))),
+          ),
           IconButton(
             tooltip: 'باہر نکلیں',
             icon: const Icon(Icons.logout),
