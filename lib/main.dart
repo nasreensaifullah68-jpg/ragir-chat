@@ -40,8 +40,8 @@ class RagirChatApp extends StatelessWidget {
 }
 
 void showMsg(BuildContext context, String text) {
-  ScaffoldMessenger.of(context)
-      .showSnackBar(SnackBar(content: Text(text)));
+  ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(text), duration: const Duration(seconds: 12)));
 }
 
 class LoginScreen extends StatefulWidget {
@@ -71,7 +71,7 @@ class _LoginScreenState extends State<LoginScreen> {
       verificationFailed: (e) {
         if (!mounted) return;
         setState(() => loading = false);
-        showMsg(context, 'خرابی: ${e.code}');
+        showMsg(context, 'خرابی: ${e.code} ${e.message}');
       },
       codeSent: (id, _) {
         if (!mounted) return;
@@ -176,7 +176,7 @@ class _OtpScreenState extends State<OtpScreen> {
     } on FirebaseAuthException catch (e) {
       if (!mounted) return;
       setState(() => loading = false);
-      showMsg(context, 'خرابی: ${e.code}');
+      showMsg(context, 'خرابی: ${e.code} ${e.message}');
     }
   }
 
