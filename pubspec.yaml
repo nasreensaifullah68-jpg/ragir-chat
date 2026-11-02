@@ -1,6 +1,6 @@
 name: ragir_chat
-description: Ragir Chat - Urdu chat app
-publish_to: "none"
+description: Ragir Chat
+publish_to: 'none'
 version: 1.0.0+1
 
 environment:
@@ -12,6 +12,7 @@ dependencies:
   firebase_core: any
   firebase_auth: any
   cloud_firestore: any
+  image_picker: any
 
 flutter:
   uses-material-design: true
