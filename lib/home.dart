@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'avatar.dart';
 import 'main.dart';
 import 'status.dart';
 
@@ -157,6 +158,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         foregroundColor: Colors.white,
         actions: [
           IconButton(
+            tooltip: 'میری فوٹو',
+            icon: const Icon(Icons.account_circle),
+            onPressed: () => changePhoto(context),
+          ),
+          IconButton(
             tooltip: 'اسٹیٹس',
             icon: const Icon(Icons.circle_outlined),
             onPressed: () => Navigator.of(context).push(MaterialPageRoute(
@@ -240,14 +246,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               return ListTile(
                 contentPadding:
                     const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                leading: CircleAvatar(
-                  radius: 28,
-                  backgroundColor: green,
-                  child: Text(
-                    otherName.isEmpty ? '؟' : otherName.substring(0, 1),
-                    style: const TextStyle(color: Colors.white, fontSize: 24),
-                  ),
-                ),
+                leading: UserAvatar(uid: otherId, name: otherName),
                 title: Text(otherName,
                     style: const TextStyle(
                         fontSize: 22, fontWeight: FontWeight.bold)),
@@ -364,12 +363,21 @@ class _ChatScreenState extends State<ChatScreen> {
               .snapshots(),
           builder: (context, s) {
             final status = lastSeenText(s.data?.data());
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            return Row(
               children: [
-                Text(widget.otherName, style: const TextStyle(fontSize: 20)),
-                if (status.isNotEmpty)
-                  Text(status, style: const TextStyle(fontSize: 13)),
+                UserAvatar(uid: otherId, name: widget.otherName, radius: 18),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(widget.otherName,
+                          style: const TextStyle(fontSize: 20)),
+                      if (status.isNotEmpty)
+                        Text(status, style: const TextStyle(fontSize: 13)),
+                    ],
+                  ),
+                ),
               ],
             );
           },
