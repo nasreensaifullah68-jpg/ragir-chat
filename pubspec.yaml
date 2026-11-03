@@ -13,6 +13,7 @@ dependencies:
   firebase_auth: any
   cloud_firestore: any
   image_picker: any
+  http: any
 
 flutter:
   uses-material-design: true
