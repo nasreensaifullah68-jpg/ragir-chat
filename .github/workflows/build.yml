@@ -53,7 +53,7 @@ jobs:
           );
           EOF
 
-      - run: flutter pub get
+      - run: flutter pub add record audioplayers && flutter pub get
 
       - name: Make app icon
         continue-on-error: true
@@ -66,10 +66,10 @@ jobs:
           dart run flutter_launcher_icons
           sed -i 's/android:label="[^"]*"/android:label="Rahgeer Chat"/' android/app/src/main/AndroidManifest.xml
 
-      - name: Allow internet in release app
+      - name: Allow internet and mic
         run: |
-          sed -i 's|<application|<uses-permission android:name="android.permission.INTERNET"/>\n    <application|' android/app/src/main/AndroidManifest.xml
-          grep -n "INTERNET" android/app/src/main/AndroidManifest.xml
+          sed -i 's|<application|<uses-permission android:name="android.permission.INTERNET"/>\n    <uses-permission android:name="android.permission.RECORD_AUDIO"/>\n    <application|' android/app/src/main/AndroidManifest.xml
+          grep -n "uses-permission" android/app/src/main/AndroidManifest.xml
 
       - name: Build small APK
         run: flutter build apk --release --split-per-abi
