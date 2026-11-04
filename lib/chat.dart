@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'avatar.dart';
 import 'cloud.dart';
+import 'del.dart';
 import 'main.dart';
 import 'media.dart';
 
@@ -222,7 +223,11 @@ class _ChatScreenState extends State<ChatScreen> {
                             otherRead != null &&
                             otherRead.millisecondsSinceEpoch >=
                                 ts.millisecondsSinceEpoch;
-                        return Align(
+                        return GestureDetector(
+                          onLongPress: mine
+                              ? () => deleteMessage(context, docs[i].reference)
+                              : null,
+                          child: Align(
                           alignment: mine
                               ? Alignment.centerRight
                               : Alignment.centerLeft,
@@ -278,6 +283,7 @@ class _ChatScreenState extends State<ChatScreen> {
                                 ),
                               ],
                             ),
+                          ),
                           ),
                         );
                       },
