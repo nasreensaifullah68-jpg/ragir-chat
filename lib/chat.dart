@@ -5,22 +5,7 @@ import 'package:flutter/material.dart';
 import 'avatar.dart';
 import 'cloud.dart';
 import 'main.dart';
-
-String lastSeenText(Map<String, dynamic>? u) {
-  if (u == null) return '';
-  final ts = u['lastSeen'] as Timestamp?;
-  if (ts == null) return '';
-  final t = ts.toDate();
-  final now = DateTime.now();
-  if (u['online'] == true && now.difference(t).inSeconds.abs() < 100) {
-    return 'آن لائن';
-  }
-  final l = t.toLocal();
-  final h = l.hour.toString().padLeft(2, '0');
-  final m = l.minute.toString().padLeft(2, '0');
-  final same = l.year == now.year && l.month == now.month && l.day == now.day;
-  return same ? 'آخری بار آج $h:$m' : 'آخری بار ${l.day}/${l.month} $h:$m';
-}
+import 'media.dart';
 
 class ChatScreen extends StatefulWidget {
   final String chatId;
@@ -37,6 +22,7 @@ class _ChatScreenState extends State<ChatScreen> {
   Timer? tick;
   String? markedId;
   bool uploading = false;
+  bool recording = false;
 
   DocumentReference<Map<String, dynamic>> get chatRef =>
       FirebaseFirestore.instance.collection('chats').doc(widget.chatId);
@@ -115,15 +101,32 @@ class _ChatScreenState extends State<ChatScreen> {
     if (mounted) setState(() => uploading = false);
   }
 
-  void openPhoto(String url) {
-    showDialog(
-      context: context,
-      builder: (ctx) => Dialog(
-        backgroundColor: Colors.black,
-        insetPadding: EdgeInsets.zero,
-        child: InteractiveViewer(child: Image.network(url)),
-      ),
-    );
+  Future<void> sendVoice(String path, int secs) async {
+    setState(() {
+      recording = false;
+      uploading = true;
+    });
+    try {
+      final url = await uploadAudio(path);
+      if (url != null) {
+        await chatRef.collection('messages').add({
+          'text': '',
+          'audioUrl': url,
+          'audioSecs': secs,
+          'senderId': me.uid,
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+        await chatRef.update({
+          'lastMessage': '🎤 آواز',
+          'lastSenderId': me.uid,
+          'updatedAt': FieldValue.serverTimestamp(),
+          'lastRead.${me.uid}': FieldValue.serverTimestamp(),
+        });
+      }
+    } catch (e) {
+      if (mounted) showMsg(context, 'خرابی: $e');
+    }
+    if (mounted) setState(() => uploading = false);
   }
 
   String fmt(DateTime t) {
@@ -241,38 +244,12 @@ class _ChatScreenState extends State<ChatScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 if (m['imageUrl'] != null)
-                                  Padding(
-                                    padding: const EdgeInsets.only(bottom: 6),
-                                    child: GestureDetector(
-                                      onTap: () =>
-                                          openPhoto(m['imageUrl'] as String),
-                                      child: ClipRRect(
-                                        borderRadius:
-                                            BorderRadius.circular(10),
-                                        child: Image.network(
-                                          m['imageUrl'] as String,
-                                          width: 220,
-                                          fit: BoxFit.cover,
-                                          loadingBuilder: (c, w, p) =>
-                                              p == null
-                                                  ? w
-                                                  : const SizedBox(
-                                                      width: 220,
-                                                      height: 160,
-                                                      child: Center(
-                                                          child:
-                                                              CircularProgressIndicator())),
-                                          errorBuilder: (c, e, st) =>
-                                              const SizedBox(
-                                                  width: 220,
-                                                  height: 80,
-                                                  child: Center(
-                                                      child: Icon(
-                                                          Icons.broken_image))),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
+                                  ImageBubble(url: m['imageUrl'] as String),
+                                if (m['audioUrl'] != null)
+                                  VoiceBubble(
+                                      url: m['audioUrl'] as String,
+                                      secs: ((m['audioSecs'] as num?) ?? 0)
+                                          .toInt()),
                                 if (((m['text'] as String?) ?? '').isNotEmpty)
                                   Text((m['text'] as String?) ?? '',
                                       style: const TextStyle(fontSize: 20)),
@@ -313,7 +290,11 @@ class _ChatScreenState extends State<ChatScreen> {
           SafeArea(
             child: Padding(
               padding: const EdgeInsets.all(8),
-              child: Row(
+              child: recording
+                  ? RecorderBar(
+                      onSend: sendVoice,
+                      onCancel: () => setState(() => recording = false))
+                  : Row(
                 children: [
                   IconButton(
                     onPressed: uploading ? null : sendPhoto,
@@ -323,6 +304,11 @@ class _ChatScreenState extends State<ChatScreen> {
                             height: 24,
                             child: CircularProgressIndicator(strokeWidth: 3))
                         : const Icon(Icons.photo, color: green, size: 30),
+                  ),
+                  IconButton(
+                    onPressed:
+                        uploading ? null : () => setState(() => recording = true),
+                    icon: const Icon(Icons.mic, color: green, size: 32),
                   ),
                   Expanded(
                     child: TextField(
