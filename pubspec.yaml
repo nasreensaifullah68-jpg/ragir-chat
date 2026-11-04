@@ -15,5 +15,15 @@ dependencies:
   image_picker: any
   http: any
 
+dev_dependencies:
+  flutter_launcher_icons: any
+
+flutter_launcher_icons:
+  android: true
+  ios: false
+  image_path: "icon.png"
+  adaptive_icon_background: "#0F8A5F"
+  adaptive_icon_foreground: "icon_fg.png"
+
 flutter:
   uses-material-design: true
