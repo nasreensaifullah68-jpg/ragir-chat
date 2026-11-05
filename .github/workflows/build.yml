@@ -47,7 +47,7 @@ jobs:
           );
           EOF
 
-      - run: flutter pub add record audioplayers gal && flutter pub get
+      - run: flutter pub add record audioplayers gal video_player && flutter pub get
 
       - name: Make app icon
         continue-on-error: true
