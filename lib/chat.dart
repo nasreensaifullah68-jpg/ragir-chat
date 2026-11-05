@@ -7,6 +7,7 @@ import 'cloud.dart';
 import 'del.dart';
 import 'main.dart';
 import 'media.dart';
+import 'photo.dart';
 
 class ChatScreen extends StatefulWidget {
   final String chatId;
@@ -79,6 +80,8 @@ class _ChatScreenState extends State<ChatScreen> {
 
   Future<void> sendPhoto() async {
     if (uploading) return;
+    final mode = await choosePhotoMode(context);
+    if (mode == null) return;
     setState(() => uploading = true);
     try {
       final url = await pickAndUploadPhoto();
@@ -86,6 +89,7 @@ class _ChatScreenState extends State<ChatScreen> {
         await chatRef.collection('messages').add({
           'text': '',
           'imageUrl': url,
+          'photoMode': mode,
           'senderId': me.uid,
           'createdAt': FieldValue.serverTimestamp(),
         });
@@ -248,8 +252,15 @@ class _ChatScreenState extends State<ChatScreen> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                if (m['imageUrl'] != null)
-                                  ImageBubble(url: m['imageUrl'] as String),
+                                if (m['imageUrl'] != null ||
+                                    m['viewed'] == true)
+                                  PhotoBubble(
+                                      url: m['imageUrl'] as String?,
+                                      mode:
+                                          (m['photoMode'] as String?) ?? 'save',
+                                      mine: mine,
+                                      viewed: m['viewed'] == true,
+                                      msgRef: docs[i].reference),
                                 if (m['audioUrl'] != null)
                                   VoiceBubble(
                                       url: m['audioUrl'] as String,
