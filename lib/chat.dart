@@ -3,7 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'avatar.dart';
-import 'cloud.dart';
+import 'camera.dart';
 import 'del.dart';
 import 'main.dart';
 import 'media.dart';
@@ -78,13 +78,13 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
-  Future<void> sendPhoto() async {
+  Future<void> sendPhoto(ImageSource source) async {
     if (uploading) return;
     final mode = await choosePhotoMode(context);
     if (mode == null) return;
     setState(() => uploading = true);
     try {
-      final url = await pickAndUploadPhoto();
+      final url = await pickAndUploadFrom(source);
       if (url != null) {
         await chatRef.collection('messages').add({
           'text': '',
@@ -314,13 +314,21 @@ class _ChatScreenState extends State<ChatScreen> {
                   : Row(
                 children: [
                   IconButton(
-                    onPressed: uploading ? null : sendPhoto,
+                    onPressed: uploading
+                        ? null
+                        : () => sendPhoto(ImageSource.gallery),
                     icon: uploading
                         ? const SizedBox(
                             width: 24,
                             height: 24,
                             child: CircularProgressIndicator(strokeWidth: 3))
                         : const Icon(Icons.photo, color: green, size: 30),
+                  ),
+                  IconButton(
+                    onPressed: uploading
+                        ? null
+                        : () => sendPhoto(ImageSource.camera),
+                    icon: const Icon(Icons.photo_camera, color: green, size: 30),
                   ),
                   IconButton(
                     onPressed:
