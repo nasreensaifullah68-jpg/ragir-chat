@@ -28,12 +28,6 @@ jobs:
             flutter create --platforms=android --org com.nasreen.ragirchat --project-name ragir_chat .
           fi
 
-      - name: Use fixed debug key
-        run: |
-          mkdir -p ~/.android
-          echo "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" | base64 -d > ~/.android/debug.keystore
-          keytool -list -keystore ~/.android/debug.keystore -storepass android | grep -i "fingerprint"
-
       - name: Make Firebase options from google-services.json
         run: |
           API_KEY=$(jq -r '.client[0].api_key[0].current_key' google-services.json)
@@ -74,8 +68,19 @@ jobs:
       - name: Build small APK
         run: flutter build apk --release --split-per-abi
 
+      - name: Sign APK with our secret key
+        env:
+          KS_B64: ${{ secrets.KS_B64 }}
+          KS_PASS: ${{ secrets.KS_PASS }}
+        run: |
+          echo "$KS_B64" | base64 -d > "$RUNNER_TEMP/ragir.jks"
+          BT=$(ls -d $ANDROID_HOME/build-tools/*/ | sort -V | tail -1)
+          cd build/app/outputs/flutter-apk
+          "${BT}apksigner" sign --ks "$RUNNER_TEMP/ragir.jks" --ks-key-alias ragir --ks-pass env:KS_PASS --out Rahgeer-Chat.apk app-arm64-v8a-release.apk
+          "${BT}apksigner" verify --print-certs Rahgeer-Chat.apk | head -3
+
       - uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ github.run_number }}
           name: Ragir Chat v${{ github.run_number }}
-          files: build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
+          files: build/app/outputs/flutter-apk/Rahgeer-Chat.apk
