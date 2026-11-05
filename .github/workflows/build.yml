@@ -47,7 +47,7 @@ jobs:
           );
           EOF
 
-      - run: flutter pub add record audioplayers gal video_player && flutter pub get
+      - run: flutter pub add record audioplayers gal video_player flutter_webrtc && flutter pub get
 
       - name: Make app icon
         continue-on-error: true
@@ -62,8 +62,16 @@ jobs:
 
       - name: Allow internet and mic
         run: |
-          sed -i 's|<application|<uses-permission android:name="android.permission.INTERNET"/>\n    <uses-permission android:name="android.permission.RECORD_AUDIO"/>\n    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28"/>\n    <application|' android/app/src/main/AndroidManifest.xml
+          sed -i 's|<application|<uses-permission android:name="android.permission.INTERNET"/>\n    <uses-permission android:name="android.permission.RECORD_AUDIO"/>\n    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS"/>\n    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>\n    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28"/>\n    <application|' android/app/src/main/AndroidManifest.xml
           grep -n "uses-permission" android/app/src/main/AndroidManifest.xml
+
+      - name: Set minimum Android version for calls
+        run: |
+          for f in android/app/build.gradle android/app/build.gradle.kts; do
+            [ -f "$f" ] || continue
+            sed -i -E 's/minSdk(Version)?( =|) flutter\.minSdkVersion/minSdk\1\2 24/' "$f"
+            grep -n "minSdk" "$f"
+          done
 
       - name: Build small APK
         run: flutter build apk --release --split-per-abi
