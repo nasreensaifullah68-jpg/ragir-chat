@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'avatar.dart';
+import 'channels.dart';
 import 'chat.dart';
 import 'main.dart';
 import 'me.dart';
@@ -294,7 +295,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     final myId = FirebaseAuth.instance.currentUser?.uid ?? '';
     return Scaffold(
       backgroundColor: softBg,
-      appBar: tab == 1
+      appBar: (tab == 1 || tab == 2)
           ? null
           : AppBar(
               title: Text(tab == 0 ? 'رَاگیر چیٹ' : 'میرا کھاتا',
@@ -315,8 +316,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       body: tab == 0
           ? chatsTab(myId)
           : (tab == 1
-              ? StatusScreen(name: widget.name)
-              : MeTab(
+              ? ChannelsScreen(name: widget.name)
+              : tab == 2
+                  ? StatusScreen(name: widget.name)
+                  : MeTab(
                   name: widget.name,
                   onLogout: () async {
                     await setOnline(false);
@@ -331,6 +334,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               icon: Icon(Icons.chat_bubble_outline),
               selectedIcon: Icon(Icons.chat_bubble),
               label: 'چیٹس'),
+          NavigationDestination(
+              icon: Icon(Icons.campaign_outlined),
+              selectedIcon: Icon(Icons.campaign),
+              label: 'چینل'),
           NavigationDestination(
               icon: Icon(Icons.circle_outlined),
               selectedIcon: Icon(Icons.circle),
