@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'avatar.dart';
+import 'call.dart';
 import 'camera.dart';
 import 'del.dart';
 import 'main.dart';
@@ -174,6 +175,14 @@ class _ChatScreenState extends State<ChatScreen> {
         ),
         backgroundColor: green,
         foregroundColor: Colors.white,
+        actions: [
+          IconButton(
+            tooltip: 'کال کریں',
+            icon: const Icon(Icons.call, size: 28),
+            onPressed: () =>
+                CallService.instance.startCall(otherId, widget.otherName),
+          ),
+        ],
       ),
       body: Column(
         children: [
