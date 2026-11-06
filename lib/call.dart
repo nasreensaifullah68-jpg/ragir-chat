@@ -12,6 +12,7 @@ class CallService extends ChangeNotifier {
 
   CallPhase phase = CallPhase.idle;
   String otherName = '';
+  String otherId = '';
   String? note;
   bool muted = false;
   bool speaker = false;
@@ -83,6 +84,7 @@ class CallService extends ChangeNotifier {
         _role = 'callee';
         _offer = Map<String, dynamic>.from(data['offer'] as Map);
         otherName = (data['callerName'] as String?) ?? 'نامعلوم';
+        otherId = (data['callerId'] as String?) ?? '';
         phase = CallPhase.incoming;
         _ringTimer?.cancel();
         _ringTimer = Timer(const Duration(seconds: 55), () {
@@ -116,12 +118,19 @@ class CallService extends ChangeNotifier {
       if (c.candidate == null) return;
       _sendCand(Map<String, dynamic>.from(c.toMap() as Map));
     };
+    pc.onTrack = (e) {
+      e.track.enabled = true;
+    };
     pc.onIceConnectionState = (st) {
       if (st == RTCIceConnectionState.RTCIceConnectionStateConnected ||
           st == RTCIceConnectionState.RTCIceConnectionStateCompleted) {
         if (phase == CallPhase.connecting || phase == CallPhase.outgoing) {
           phase = CallPhase.connected;
           seconds = 0;
+          speaker = true;
+          try {
+            Helper.setSpeakerphoneOn(true);
+          } catch (_) {}
           _timer?.cancel();
           _timer = Timer.periodic(const Duration(seconds: 1), (_) {
             seconds++;
@@ -200,6 +209,7 @@ class CallService extends ChangeNotifier {
     final me = FirebaseAuth.instance.currentUser;
     if (me == null || phase != CallPhase.idle) return;
     otherName = name;
+    this.otherId = otherId;
     _role = 'caller';
     phase = CallPhase.outgoing;
     notifyListeners();
@@ -325,6 +335,7 @@ class CallService extends ChangeNotifier {
     _docReady = false;
     muted = false;
     speaker = false;
+    otherId = '';
     seconds = 0;
     phase = CallPhase.idle;
     notifyListeners();
