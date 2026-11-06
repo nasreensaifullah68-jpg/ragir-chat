@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'main.dart';
 import 'new_post.dart';
+import 'post_actions.dart';
 import 'photo.dart';
 import 'vid.dart';
 
@@ -168,6 +169,15 @@ class ChannelPage extends StatelessWidget {
                                 child: Text(text,
                                     style: const TextStyle(fontSize: 20)),
                               ),
+                            PostActions(
+                              postRef: docs[i].reference,
+                              likes: List<String>.from(d['likes'] ?? []),
+                              channelName: name,
+                              text: text,
+                              imageUrl: img,
+                              videoUrl: vid,
+                              isOwner: mine,
+                            ),
                             Row(
                               children: [
                                 Expanded(
