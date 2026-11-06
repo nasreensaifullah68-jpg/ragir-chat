@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
@@ -44,20 +45,22 @@ Future<Map<String, String>?> pickAndUploadPdf() async {
   );
   if (r == null || r.isEmpty) return null;
   final f = r.first;
-  if (f.path == null) return null;
-  if (f.size > 10 * 1024 * 1024) {
+  final path = f.path;
+  if (path == null) return null;
+  final size = await File(path).length();
+  if (size > 10 * 1024 * 1024) {
     throw Exception('فائل 10 MB سے بڑی ہے');
   }
   final req = http.MultipartRequest('POST',
       Uri.parse('https://api.cloudinary.com/v1_1/$cloudName/raw/upload'));
   req.fields['upload_preset'] = uploadPreset;
-  req.files.add(await http.MultipartFile.fromPath('file', f.path!));
+  req.files.add(await http.MultipartFile.fromPath('file', path));
   final res = await http.Response.fromStream(await req.send());
   final data = jsonDecode(res.body) as Map<String, dynamic>;
   if (res.statusCode != 200) {
     throw Exception(data['error']?['message'] ?? 'اپلوڈ نہیں ہوا');
   }
-  return {'url': data['secure_url'] as String, 'name': f.name};
+  return {'url': data['secure_url'] as String, 'name': path.split('/').last};
 }
 
 Future<Position?> getMyPosition(BuildContext context) async {
