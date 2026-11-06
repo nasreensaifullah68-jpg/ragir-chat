@@ -100,7 +100,7 @@ class _FilterScreenState extends State<FilterScreen> {
     try {
       final rb = boundaryKey.currentContext!.findRenderObject()
           as RenderRepaintBoundary;
-      final pr = (1200 / rb.size.width).clamp(1.0, 3.0);
+      final pr = (1200 / rb.size.width).clamp(1.0, 3.0).toDouble();
       final img = await rb.toImage(pixelRatio: pr);
       final bd = await img.toByteData(format: ui.ImageByteFormat.png);
       if (!mounted) return;
