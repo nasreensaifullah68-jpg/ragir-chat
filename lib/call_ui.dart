@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'avatar.dart';
 import 'call.dart';
 
 const _green = Color(0xFF0F8A5F);
@@ -66,7 +67,9 @@ class _CallOverlayState extends State<CallOverlay> {
           padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
           child: Row(
             children: [
-              const Icon(Icons.call, color: Colors.white),
+              s.otherId.isEmpty
+                  ? const Icon(Icons.call, color: Colors.white)
+                  : UserAvatar(uid: s.otherId, name: s.otherName, radius: 22),
               const SizedBox(width: 10),
               Expanded(
                 child: Column(
@@ -129,7 +132,9 @@ class _CallOverlayState extends State<CallOverlay> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.account_circle, color: Colors.white, size: 130),
+            s.otherId.isEmpty
+                ? const Icon(Icons.account_circle, color: Colors.white, size: 130)
+                : UserAvatar(uid: s.otherId, name: s.otherName, radius: 75),
             const SizedBox(height: 16),
             Text(s.otherName,
                 textAlign: TextAlign.center,
