@@ -42,8 +42,8 @@ Future<Map<String, String>?> pickAndUploadPdf() async {
     type: FileType.custom,
     allowedExtensions: ['pdf'],
   );
-  if (r == null || r.files.isEmpty) return null;
-  final f = r.files.single;
+  if (r == null || r.isEmpty) return null;
+  final f = r.first;
   if (f.path == null) return null;
   if (f.size > 10 * 1024 * 1024) {
     throw Exception('فائل 10 MB سے بڑی ہے');
