@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'attach.dart';
 import 'avatar.dart';
 import 'call.dart';
 import 'camera.dart';
@@ -57,25 +58,25 @@ class _ChatScreenState extends State<ChatScreen> {
     } catch (_) {}
   }
 
+  Future<void> run(Future<void> Function() job) async {
+    if (uploading) return;
+    setState(() => uploading = true);
+    try {
+      await job();
+    } catch (e) {
+      if (mounted) showMsg(context, 'خرابی: $e');
+    }
+    if (mounted) setState(() => uploading = false);
+  }
+
   Future<void> send() async {
     final text = controller.text.trim();
     if (text.isEmpty) return;
     controller.clear();
     try {
-      await chatRef.collection('messages').add({
-        'text': text,
-        'senderId': me.uid,
-        'createdAt': FieldValue.serverTimestamp(),
-      });
-      await chatRef.update({
-        'lastMessage': text,
-        'lastSenderId': me.uid,
-        'updatedAt': FieldValue.serverTimestamp(),
-        'lastRead.${me.uid}': FieldValue.serverTimestamp(),
-      });
+      await postMsg(chatRef, me.uid, {'text': text}, text);
     } catch (e) {
-      if (!mounted) return;
-      showMsg(context, 'خرابی: $e');
+      if (mounted) showMsg(context, 'خرابی: $e');
     }
   }
 
@@ -83,56 +84,24 @@ class _ChatScreenState extends State<ChatScreen> {
     if (uploading) return;
     final mode = await choosePhotoMode(context);
     if (mode == null) return;
-    setState(() => uploading = true);
-    try {
+    await run(() async {
       final url = await pickAndUploadFrom(source);
       if (url != null) {
-        await chatRef.collection('messages').add({
-          'text': '',
-          'imageUrl': url,
-          'photoMode': mode,
-          'senderId': me.uid,
-          'createdAt': FieldValue.serverTimestamp(),
-        });
-        await chatRef.update({
-          'lastMessage': '📷 فوٹو',
-          'lastSenderId': me.uid,
-          'updatedAt': FieldValue.serverTimestamp(),
-          'lastRead.${me.uid}': FieldValue.serverTimestamp(),
-        });
+        await postMsg(chatRef, me.uid,
+            {'imageUrl': url, 'photoMode': mode}, '📷 فوٹو');
       }
-    } catch (e) {
-      if (mounted) showMsg(context, 'خرابی: $e');
-    }
-    if (mounted) setState(() => uploading = false);
+    });
   }
 
   Future<void> sendVoice(String path, int secs) async {
-    setState(() {
-      recording = false;
-      uploading = true;
-    });
-    try {
+    setState(() => recording = false);
+    await run(() async {
       final url = await uploadAudio(path);
       if (url != null) {
-        await chatRef.collection('messages').add({
-          'text': '',
-          'audioUrl': url,
-          'audioSecs': secs,
-          'senderId': me.uid,
-          'createdAt': FieldValue.serverTimestamp(),
-        });
-        await chatRef.update({
-          'lastMessage': '🎤 آواز',
-          'lastSenderId': me.uid,
-          'updatedAt': FieldValue.serverTimestamp(),
-          'lastRead.${me.uid}': FieldValue.serverTimestamp(),
-        });
+        await postMsg(chatRef, me.uid,
+            {'audioUrl': url, 'audioSecs': secs}, '🎤 آواز');
       }
-    } catch (e) {
-      if (mounted) showMsg(context, 'خرابی: $e');
-    }
-    if (mounted) setState(() => uploading = false);
+    });
   }
 
   String fmt(DateTime t) {
@@ -272,6 +241,7 @@ class _ChatScreenState extends State<ChatScreen> {
                                       mine: mine,
                                       viewed: m['viewed'] == true,
                                       msgRef: docs[i].reference),
+                                AttachBubble(m: m),
                                 if (m['audioUrl'] != null)
                                   VoiceBubble(
                                       url: m['audioUrl'] as String,
@@ -327,6 +297,13 @@ class _ChatScreenState extends State<ChatScreen> {
                       onCancel: () => setState(() => recording = false))
                   : Row(
                 children: [
+                  IconButton(
+                    onPressed: uploading
+                        ? null
+                        : () => run(() => sendAttachment(
+                            context, chatRef, me.uid)),
+                    icon: const Icon(Icons.attach_file, color: green, size: 30),
+                  ),
                   IconButton(
                     onPressed: uploading
                         ? null
