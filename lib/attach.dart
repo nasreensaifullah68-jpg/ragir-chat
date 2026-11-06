@@ -38,7 +38,7 @@ Future<String?> chooseAttach(BuildContext context) {
 }
 
 Future<Map<String, String>?> pickAndUploadPdf() async {
-  final r = await FilePicker.platform.pickFiles(
+  final r = await FilePicker.pickFiles(
     type: FileType.custom,
     allowedExtensions: ['pdf'],
   );
