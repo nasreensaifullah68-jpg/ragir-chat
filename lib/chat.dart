@@ -5,10 +5,10 @@ import 'package:flutter/material.dart';
 import 'avatar.dart';
 import 'call.dart';
 import 'camera.dart';
-import 'del.dart';
 import 'main.dart';
 import 'media.dart';
 import 'photo.dart';
+import 'react.dart';
 
 class ChatScreen extends StatefulWidget {
   final String chatId;
@@ -237,9 +237,11 @@ class _ChatScreenState extends State<ChatScreen> {
                             otherRead.millisecondsSinceEpoch >=
                                 ts.millisecondsSinceEpoch;
                         return GestureDetector(
-                          onLongPress: mine
-                              ? () => deleteMessage(context, docs[i].reference)
-                              : null,
+                          onLongPress: () => showReactSheet(context,
+                              ref: docs[i].reference,
+                              mine: mine,
+                              current: (m['reactions']
+                                  as Map<String, dynamic>?)?[me.uid] as String?),
                           child: Align(
                           alignment: mine
                               ? Alignment.centerRight
@@ -278,6 +280,9 @@ class _ChatScreenState extends State<ChatScreen> {
                                 if (((m['text'] as String?) ?? '').isNotEmpty)
                                   Text((m['text'] as String?) ?? '',
                                       style: const TextStyle(fontSize: 20)),
+                                ReactionRow(
+                                    reactions: Map<String, dynamic>.from(
+                                        (m['reactions'] as Map?) ?? {})),
                                 Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
