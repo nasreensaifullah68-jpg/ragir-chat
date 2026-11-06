@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'call_ui.dart';
+import 'filter.dart';
 import 'firebase_options.dart';
 import 'home.dart';
 import 'login.dart';
@@ -22,6 +23,7 @@ class RagirChatApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      navigatorKey: navKey,
       debugShowCheckedModeBanner: false,
       title: 'رَاگیر چیٹ',
       builder: (context, child) => Directionality(
