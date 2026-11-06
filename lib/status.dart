@@ -1,22 +1,45 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'camera.dart';
 import 'main.dart';
+import 'media.dart';
+import 'status_card.dart';
+import 'vid.dart';
 
-const statusColors = [
-  Color(0xFF0F8A5F),
-  Color(0xFF1E6FD9),
-  Color(0xFF8E44AD),
-  Color(0xFFD35400),
-  Color(0xFFC0392B),
-];
-
-class StatusScreen extends StatelessWidget {
+class StatusScreen extends StatefulWidget {
   final String name;
   const StatusScreen({super.key, required this.name});
 
-  Future<void> addStatus(BuildContext context) async {
+  @override
+  State<StatusScreen> createState() => _StatusScreenState();
+}
+
+class _StatusScreenState extends State<StatusScreen> {
+  bool uploading = false;
+
+  Future<void> post(Map<String, dynamic> data) async {
     final me = FirebaseAuth.instance.currentUser!;
+    await FirebaseFirestore.instance.collection('statuses').add({
+      'authorId': me.uid,
+      'authorName': widget.name,
+      'color': DateTime.now().millisecond % statusColors.length,
+      ...data,
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  Future<void> run(Future<void> Function() job) async {
+    setState(() => uploading = true);
+    try {
+      await job();
+    } catch (e) {
+      if (mounted) showMsg(context, 'خرابی: $e');
+    }
+    if (mounted) setState(() => uploading = false);
+  }
+
+  Future<void> addText() async {
     final controller = TextEditingController();
     final text = await showDialog<String>(
       context: context,
@@ -43,32 +66,88 @@ class StatusScreen extends StatelessWidget {
       ),
     );
     if (text == null || text.trim().isEmpty) return;
-    try {
-      await FirebaseFirestore.instance.collection('statuses').add({
-        'authorId': me.uid,
-        'authorName': name,
-        'text': text.trim(),
-        'color': DateTime.now().millisecond % statusColors.length,
-        'createdAt': FieldValue.serverTimestamp(),
-      });
-    } catch (e) {
-      if (!context.mounted) return;
-      showMsg(context, 'خرابی: $e');
-    }
+    await run(() => post({'text': text.trim()}));
   }
 
-  String timeText(DateTime t) {
-    final l = t.toLocal();
-    final h = l.hour.toString().padLeft(2, '0');
-    final m = l.minute.toString().padLeft(2, '0');
-    final now = DateTime.now();
-    final same = l.year == now.year && l.month == now.month && l.day == now.day;
-    return same ? 'آج $h:$m' : 'کل $h:$m';
+  Future<void> addPhoto(ImageSource s) async {
+    await run(() async {
+      final url = await pickAndUploadFrom(s);
+      if (url != null) await post({'imageUrl': url});
+    });
+  }
+
+  Future<void> addVideo() async {
+    await run(() async {
+      final url = await pickAndUploadVideo();
+      if (url != null) await post({'videoUrl': url});
+    });
+  }
+
+  Future<void> addAudio() async {
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        title: const Text('آواز ریکارڈ کریں'),
+        content: SizedBox(
+          width: 320,
+          height: 70,
+          child: RecorderBar(
+            onCancel: () => Navigator.pop(ctx),
+            onSend: (path, secs) {
+              Navigator.pop(ctx);
+              run(() async {
+                final url = await uploadAudio(path);
+                if (url != null) {
+                  await post({'audioUrl': url, 'audioSecs': secs});
+                }
+              });
+            },
+          ),
+        ),
+      ),
+    );
+  }
+
+  void chooseType() {
+    Widget opt(IconData icon, String text, VoidCallback onTap) {
+      return ListTile(
+        leading: Icon(icon, color: green, size: 32),
+        title: Text(text, style: const TextStyle(fontSize: 20)),
+        onTap: () {
+          Navigator.pop(context);
+          onTap();
+        },
+      );
+    }
+
+    showModalBottomSheet(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Padding(
+              padding: EdgeInsets.all(16),
+              child: Text('اسٹیٹس میں کیا لگانا ہے؟',
+                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+            ),
+            opt(Icons.text_fields, 'لکھائی', addText),
+            opt(Icons.photo, 'فوٹو (گیلری سے)',
+                () => addPhoto(ImageSource.gallery)),
+            opt(Icons.photo_camera, 'فوٹو (کیمرے سے)',
+                () => addPhoto(ImageSource.camera)),
+            opt(Icons.videocam, 'ویڈیو', addVideo),
+            opt(Icons.mic, 'آواز', addAudio),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final myId = FirebaseAuth.instance.currentUser?.uid ?? '';
     final since = Timestamp.fromDate(
         DateTime.now().subtract(const Duration(hours: 24)));
     return Scaffold(
@@ -77,11 +156,16 @@ class StatusScreen extends StatelessWidget {
         title: const Text('اسٹیٹس'),
         backgroundColor: green,
         foregroundColor: Colors.white,
+        bottom: uploading
+            ? const PreferredSize(
+                preferredSize: Size.fromHeight(4),
+                child: LinearProgressIndicator())
+            : null,
       ),
       floatingActionButton: FloatingActionButton.extended(
         backgroundColor: green,
         foregroundColor: Colors.white,
-        onPressed: () => addStatus(context),
+        onPressed: uploading ? null : chooseType,
         icon: const Icon(Icons.add),
         label: const Text('اسٹیٹس لگائیں', style: TextStyle(fontSize: 20)),
       ),
@@ -120,54 +204,12 @@ class StatusScreen extends StatelessWidget {
           return ListView.builder(
             padding: const EdgeInsets.fromLTRB(12, 12, 12, 100),
             itemCount: docs.length,
-            itemBuilder: (context, i) {
-              final d = docs[i].data();
-              final mine = d['authorId'] == myId;
-              final ts = d['createdAt'] as Timestamp?;
-              final ci = ((d['color'] as num?) ?? 0).toInt() %
-                  statusColors.length;
-              return Container(
-                margin: const EdgeInsets.only(bottom: 12),
-                padding: const EdgeInsets.all(18),
-                decoration: BoxDecoration(
-                  color: statusColors[ci],
-                  borderRadius: BorderRadius.circular(18),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            mine ? 'آپ' : ((d['authorName'] as String?) ?? ''),
-                            style: const TextStyle(
-                                color: Colors.white70,
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold),
-                          ),
-                        ),
-                        if (ts != null)
-                          Text(timeText(ts.toDate()),
-                              style: const TextStyle(
-                                  color: Colors.white70, fontSize: 14)),
-                        if (mine)
-                          IconButton(
-                            tooltip: 'ہٹائیں',
-                            icon: const Icon(Icons.delete,
-                                color: Colors.white),
-                            onPressed: () => docs[i].reference.delete(),
-                          ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Text((d['text'] as String?) ?? '',
-                        style: const TextStyle(
-                            color: Colors.white, fontSize: 26)),
-                  ],
-                ),
-              );
-            },
+            itemBuilder: (context, i) => StatusCard(
+              key: ValueKey(docs[i].id),
+              ref: docs[i].reference,
+              d: docs[i].data(),
+              myName: widget.name,
+            ),
           );
         },
       ),
