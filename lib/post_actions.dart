@@ -25,8 +25,7 @@ class PostActions extends StatelessWidget {
 
   String get uid => FirebaseAuth.instance.currentUser?.uid ?? '';
 
-  Future<void> toggleLike(BuildContext context) async {
-    final liked = likes.contains(uid);
+  Future<void> toggleLike(BuildContext context, bool liked) async {
     try {
       await postRef.update({
         'likes': liked
@@ -44,6 +43,9 @@ class PostActions extends StatelessWidget {
     if (videoUrl != null) parts.add(videoUrl!);
     parts.add('— راہگیر چیٹ');
     await Clipboard.setData(ClipboardData(text: parts.join('\n')));
+    try {
+      await postRef.update({'shares': FieldValue.increment(1)});
+    } catch (_) {}
     if (context.mounted) {
       showMsg(context, 'کاپی ہو گیا۔ اب کسی چیٹ میں پیسٹ کر کے بھیج دیں');
     }
@@ -59,7 +61,6 @@ class PostActions extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final liked = likes.contains(uid);
     Widget btn(IconData icon, String label, Color c, VoidCallback onTap) {
       return Expanded(
         child: InkWell(
@@ -79,22 +80,34 @@ class PostActions extends StatelessWidget {
       );
     }
 
-    return Column(
-      children: [
-        const Divider(height: 12),
-        Row(
+    return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+      stream: postRef.snapshots(),
+      builder: (context, snap) {
+        final d = snap.data?.data() ?? {};
+        final lk = List<String>.from(d['likes'] ?? likes);
+        final liked = lk.contains(uid);
+        final cc = ((d['commentCount'] as num?) ?? 0).toInt();
+        final sh = ((d['shares'] as num?) ?? 0).toInt();
+        return Column(
           children: [
-            btn(
-                liked ? Icons.favorite : Icons.favorite_border,
-                likes.isEmpty ? 'لائک' : '${likes.length}',
-                liked ? Colors.red : Colors.black54,
-                () => toggleLike(context)),
-            btn(Icons.mode_comment_outlined, 'تبصرہ', Colors.black54,
-                () => openComments(context)),
-            btn(Icons.share, 'شیئر', Colors.black54, () => share(context)),
+            const Divider(height: 12),
+            Row(
+              children: [
+                btn(
+                    liked ? Icons.favorite : Icons.favorite_border,
+                    lk.isEmpty ? 'لائک' : 'لائک ${lk.length}',
+                    liked ? Colors.red : Colors.black54,
+                    () => toggleLike(context, liked)),
+                btn(Icons.mode_comment_outlined,
+                    cc > 0 ? 'تبصرہ $cc' : 'تبصرہ', Colors.black54,
+                    () => openComments(context)),
+                btn(Icons.share, sh > 0 ? 'شیئر $sh' : 'شیئر',
+                    Colors.black54, () => share(context)),
+              ],
+            ),
           ],
-        ),
-      ],
+        );
+      },
     );
   }
 }
@@ -133,6 +146,17 @@ class _CommentsSheetState extends State<CommentsSheet> {
         'authorName': (u.data()?['name'] as String?) ?? 'نامعلوم',
         'createdAt': FieldValue.serverTimestamp(),
       });
+      await widget.postRef.update({'commentCount': FieldValue.increment(1)});
+    } catch (e) {
+      if (mounted) showMsg(context, 'خرابی: $e');
+    }
+  }
+
+  Future<void> removeComment(
+      DocumentReference<Map<String, dynamic>> ref) async {
+    try {
+      await ref.delete();
+      await widget.postRef.update({'commentCount': FieldValue.increment(-1)});
     } catch (e) {
       if (mounted) showMsg(context, 'خرابی: $e');
     }
@@ -189,7 +213,7 @@ class _CommentsSheetState extends State<CommentsSheet> {
                             ? IconButton(
                                 icon: const Icon(Icons.delete_outline,
                                     color: Colors.red),
-                                onPressed: () => docs[i].reference.delete(),
+                                onPressed: () => removeComment(docs[i].reference),
                               )
                             : null,
                       );
