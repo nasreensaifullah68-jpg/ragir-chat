@@ -2,12 +2,13 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'avatar.dart';
 import 'channels.dart';
 import 'chat.dart';
+import 'chat_list.dart';
 import 'main.dart';
 import 'me.dart';
 import 'status.dart';
+import 'ui.dart';
 
 class HomeScreen extends StatefulWidget {
   final String name;
@@ -20,9 +21,12 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   Timer? timer;
   int tab = 0;
+  int filter = 0;
   bool searching = false;
   final search = TextEditingController();
   final searchFocus = FocusNode();
+
+  String get digits => search.text.replaceAll(RegExp(r'[^0-9]'), '');
 
   Future<void> setOnline(bool on) async {
     final u = FirebaseAuth.instance.currentUser;
@@ -71,14 +75,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   Future<void> findPerson() async {
     final me = FirebaseAuth.instance.currentUser!;
-    var digits = search.text.replaceAll(RegExp(r'[^0-9]'), '');
-    if (digits.startsWith('92')) digits = digits.substring(2);
-    if (digits.startsWith('0')) digits = digits.substring(1);
-    if (digits.length != 10) {
+    var d = digits;
+    if (d.startsWith('92')) d = d.substring(2);
+    if (d.startsWith('0')) d = d.substring(1);
+    if (d.length != 10) {
       showMsg(context, 'پورا نمبر لکھیں (10 ہندسے)');
       return;
     }
-    final phone = '+92$digits';
+    final phone = '+92$d';
     setState(() => searching = true);
     try {
       final found = await FirebaseFirestore.instance
@@ -115,178 +119,179 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     }
   }
 
-  String timeText(Timestamp? ts) {
-    if (ts == null) return '';
-    final l = ts.toDate().toLocal();
-    final now = DateTime.now();
-    final same = l.year == now.year && l.month == now.month && l.day == now.day;
-    if (same) {
-      final h = l.hour.toString().padLeft(2, '0');
-      final m = l.minute.toString().padLeft(2, '0');
-      return '$h:$m';
-    }
-    return '${l.day}/${l.month}';
+  Future<void> logout() async {
+    await setOnline(false);
+    await FirebaseAuth.instance.signOut();
   }
 
   Widget searchBox() {
     return Container(
       color: Colors.white,
-      padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text('کسی کا نمبر لکھیں اور چیٹ شروع کریں',
-              style: TextStyle(fontSize: 16, color: Colors.black54)),
-          const SizedBox(height: 8),
-          Directionality(
-            textDirection: TextDirection.ltr,
-            child: TextField(
-              controller: search,
-              focusNode: searchFocus,
-              keyboardType: TextInputType.phone,
-              textInputAction: TextInputAction.search,
-              onSubmitted: (_) => findPerson(),
-              style: const TextStyle(fontSize: 22),
-              decoration: InputDecoration(
-                prefixText: '+92 ',
-                hintText: '3XX XXXXXXX',
-                filled: true,
-                fillColor: softBg,
-                contentPadding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(30),
-                    borderSide: BorderSide.none),
-                suffixIcon: searching
-                    ? const Padding(
-                        padding: EdgeInsets.all(12),
-                        child: SizedBox(
-                            width: 22,
-                            height: 22,
-                            child: CircularProgressIndicator(strokeWidth: 3)),
-                      )
-                    : IconButton(
-                        icon: const Icon(Icons.search, color: green, size: 30),
-                        onPressed: findPerson,
-                      ),
-              ),
-            ),
-          ),
-        ],
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 0),
+      child: TextField(
+        controller: search,
+        focusNode: searchFocus,
+        textInputAction: TextInputAction.search,
+        onChanged: (_) => setState(() {}),
+        onSubmitted: (_) {
+          if (digits.length >= 10) findPerson();
+        },
+        style: const TextStyle(fontSize: 20),
+        decoration: InputDecoration(
+          hintText: 'نام یا نمبر سے تلاش کریں',
+          filled: true,
+          fillColor: softBg,
+          prefixIcon: const Icon(Icons.search, color: green, size: 28),
+          suffixIcon: search.text.isEmpty
+              ? null
+              : IconButton(
+                  icon: const Icon(Icons.close),
+                  onPressed: () {
+                    search.clear();
+                    setState(() {});
+                  },
+                ),
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(30),
+              borderSide: BorderSide.none),
+        ),
       ),
     );
   }
 
   Widget chatsTab(String myId) {
+    final isNumber = digits.length >= 10;
     return Column(
       children: [
         searchBox(),
+        Container(
+          color: Colors.white,
+          child: PillTabs(
+            labels: const ['تمام چیٹس', 'گروپ', 'ذاتی', 'پسندیدہ'],
+            selected: filter,
+            onTap: (i) => setState(() => filter = i),
+          ),
+        ),
+        if (isNumber)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 10, 12, 4),
+            child: SizedBox(
+              width: double.infinity,
+              height: 56,
+              child: FilledButton.icon(
+                style: FilledButton.styleFrom(
+                  backgroundColor: green,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16)),
+                ),
+                onPressed: searching ? null : findPerson,
+                icon: searching
+                    ? const SizedBox(
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 3, color: Colors.white))
+                    : const Icon(Icons.chat),
+                label: const Text('اس نمبر سے چیٹ شروع کریں',
+                    style: TextStyle(fontSize: 19)),
+              ),
+            ),
+          ),
         Expanded(
-          child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-            stream: FirebaseFirestore.instance
-                .collection('chats')
-                .where('participants', arrayContains: myId)
-                .snapshots(),
-            builder: (context, snap) {
-              if (snap.hasError) {
-                return Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: Directionality(
-                      textDirection: TextDirection.ltr,
-                      child: Text('خرابی: ${snap.error}'),
-                    ),
-                  ),
-                );
-              }
-              if (!snap.hasData) {
-                return const Center(child: CircularProgressIndicator());
-              }
-              final docs = snap.data!.docs.toList();
-              docs.sort((a, b) {
-                final ta = a.data()['updatedAt'] as Timestamp?;
-                final tb = b.data()['updatedAt'] as Timestamp?;
-                return (tb?.millisecondsSinceEpoch ?? 0)
-                    .compareTo(ta?.millisecondsSinceEpoch ?? 0);
-              });
-              if (docs.isEmpty) {
-                return const Center(
-                  child: Padding(
-                    padding: EdgeInsets.all(24),
-                    child: Text(
-                        'ابھی کوئی چیٹ نہیں۔\nاوپر کسی کا نمبر لکھ کر تلاش کریں',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(fontSize: 22, color: Colors.black54)),
-                  ),
-                );
-              }
-              return ListView.separated(
-                itemCount: docs.length,
-                separatorBuilder: (_, __) =>
-                    const Divider(height: 1, indent: 84),
-                itemBuilder: (context, i) {
-                  final d = docs[i].data();
-                  final names = Map<String, dynamic>.from(d['names'] ?? {});
-                  final ids = List<String>.from(d['participants'] ?? []);
-                  final otherId =
-                      ids.firstWhere((x) => x != myId, orElse: () => myId);
-                  final otherName = (names[otherId] as String?) ?? 'نامعلوم';
-                  final last = (d['lastMessage'] as String?) ?? 'پیغام لکھیں';
-                  final lastSender = d['lastSenderId'] as String?;
-                  final upd = d['updatedAt'] as Timestamp?;
-                  final lr = d['lastRead'] as Map<String, dynamic>?;
-                  final myRead = lr?[myId] as Timestamp?;
-                  final unread = lastSender != null &&
-                      lastSender != myId &&
-                      upd != null &&
-                      (myRead == null ||
-                          myRead.millisecondsSinceEpoch <
-                              upd.millisecondsSinceEpoch);
-                  return ListTile(
-                    tileColor: Colors.white,
-                    contentPadding:
-                        const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                    leading: UserAvatar(uid: otherId, name: otherName),
-                    title: Text(otherName,
-                        style: const TextStyle(
-                            fontSize: 21, fontWeight: FontWeight.bold)),
-                    subtitle: Text(last,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                            fontSize: 17,
-                            color: unread ? Colors.black : Colors.black54,
-                            fontWeight:
-                                unread ? FontWeight.bold : FontWeight.normal)),
-                    trailing: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(timeText(upd),
-                            style: TextStyle(
-                                fontSize: 13,
-                                color: unread ? green : Colors.black45)),
-                        const SizedBox(height: 6),
-                        unread
-                            ? Container(
-                                width: 14,
-                                height: 14,
-                                decoration: const BoxDecoration(
-                                    color: green, shape: BoxShape.circle),
-                              )
-                            : const SizedBox(height: 14),
-                      ],
-                    ),
-                    onTap: () => Navigator.of(context).push(MaterialPageRoute(
-                        builder: (_) => ChatScreen(
-                            chatId: docs[i].id, otherName: otherName))),
-                  );
-                },
-              );
-            },
+          child: ChatList(
+            myId: myId,
+            query: isNumber ? '' : search.text.trim(),
+            filter: filter,
           ),
         ),
       ],
+    );
+  }
+
+  PreferredSizeWidget chatsBar() {
+    return AppBar(
+      toolbarHeight: 70,
+      backgroundColor: green,
+      foregroundColor: Colors.white,
+      centerTitle: true,
+      leading: IconButton(
+        icon: const Icon(Icons.search, size: 30),
+        onPressed: () => searchFocus.requestFocus(),
+      ),
+      title: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const BrandLogo(size: 40),
+          const SizedBox(width: 10),
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: const [
+              Text('راہگیر چیٹ',
+                  style: TextStyle(fontSize: 21, fontWeight: FontWeight.bold)),
+              Text('Rahgeer Chat', style: TextStyle(fontSize: 13)),
+            ],
+          ),
+        ],
+      ),
+      actions: [
+        Builder(
+          builder: (ctx) => IconButton(
+            icon: const Icon(Icons.menu, size: 32),
+            onPressed: () => Scaffold.of(ctx).openEndDrawer(),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget drawerItem(IconData icon, String text, VoidCallback onTap) {
+    return ListTile(
+      leading: Icon(icon, color: green, size: 28),
+      title: Text(text, style: const TextStyle(fontSize: 20)),
+      onTap: () {
+        Navigator.pop(context);
+        onTap();
+      },
+    );
+  }
+
+  Widget drawer() {
+    return Drawer(
+      child: SafeArea(
+        child: ListView(
+          padding: EdgeInsets.zero,
+          children: [
+            Container(
+              color: green,
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                children: [
+                  const BrandLogo(size: 72),
+                  const SizedBox(height: 10),
+                  Text(widget.name,
+                      style: const TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white)),
+                ],
+              ),
+            ),
+            drawerItem(Icons.person, 'میری پروفائل', () => setState(() => tab = 3)),
+            drawerItem(Icons.person_add_alt_1, 'نیا رابطہ', () => soon(context)),
+            drawerItem(Icons.group_add, 'نیا گروپ بنائیں', () => soon(context)),
+            drawerItem(Icons.campaign, 'نیا چینل بنائیں', () => setState(() => tab = 1)),
+            drawerItem(Icons.qr_code_scanner, 'QR کوڈ سے اسکین کریں', () => soon(context)),
+            drawerItem(Icons.settings, 'سیٹنگز', () => soon(context)),
+            drawerItem(Icons.dark_mode, 'ڈارک موڈ', () => soon(context)),
+            drawerItem(Icons.info, 'ایپ کے بارے میں', () => soon(context)),
+            const Divider(),
+            drawerItem(Icons.logout, 'لاگ آؤٹ', logout),
+          ],
+        ),
+      ),
     );
   }
 
@@ -295,22 +300,25 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     final myId = FirebaseAuth.instance.currentUser?.uid ?? '';
     return Scaffold(
       backgroundColor: softBg,
-      appBar: (tab == 1 || tab == 2)
-          ? null
-          : AppBar(
-              title: Text(tab == 0 ? 'رَاگیر چیٹ' : 'میرا کھاتا',
-                  style: const TextStyle(
-                      fontSize: 24, fontWeight: FontWeight.bold)),
-              backgroundColor: green,
-              foregroundColor: Colors.white,
-            ),
+      endDrawer: drawer(),
+      appBar: tab == 0
+          ? chatsBar()
+          : (tab == 3
+              ? AppBar(
+                  title: const Text('میرا کھاتا',
+                      style:
+                          TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+                  backgroundColor: green,
+                  foregroundColor: Colors.white,
+                )
+              : null),
       floatingActionButton: tab == 0
           ? FloatingActionButton(
               backgroundColor: green,
               foregroundColor: Colors.white,
               tooltip: 'نئی چیٹ',
               onPressed: () => searchFocus.requestFocus(),
-              child: const Icon(Icons.person_add_alt_1),
+              child: const Icon(Icons.edit),
             )
           : null,
       body: tab == 0
@@ -319,32 +327,28 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               ? ChannelsScreen(name: widget.name)
               : tab == 2
                   ? StatusScreen(name: widget.name)
-                  : MeTab(
-                  name: widget.name,
-                  onLogout: () async {
-                    await setOnline(false);
-                    await FirebaseAuth.instance.signOut();
-                  })),
+                  : MeTab(name: widget.name, onLogout: logout)),
       bottomNavigationBar: NavigationBar(
         backgroundColor: Colors.white,
+        indicatorColor: const Color(0xFFD6F5E5),
         selectedIndex: tab,
         onDestinationSelected: (i) => setState(() => tab = i),
         destinations: const [
           NavigationDestination(
               icon: Icon(Icons.chat_bubble_outline),
-              selectedIcon: Icon(Icons.chat_bubble),
+              selectedIcon: Icon(Icons.chat_bubble, color: green),
               label: 'چیٹس'),
           NavigationDestination(
               icon: Icon(Icons.campaign_outlined),
-              selectedIcon: Icon(Icons.campaign),
-              label: 'چینل'),
+              selectedIcon: Icon(Icons.campaign, color: green),
+              label: 'چینلز'),
           NavigationDestination(
               icon: Icon(Icons.circle_outlined),
-              selectedIcon: Icon(Icons.circle),
+              selectedIcon: Icon(Icons.circle, color: green),
               label: 'اسٹیٹس'),
           NavigationDestination(
               icon: Icon(Icons.person_outline),
-              selectedIcon: Icon(Icons.person),
+              selectedIcon: Icon(Icons.person, color: green),
               label: 'میں'),
         ],
       ),
