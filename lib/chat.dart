@@ -209,6 +209,7 @@ class _ChatScreenState extends State<ChatScreen> {
                           onLongPress: () => showReactSheet(context,
                               ref: docs[i].reference,
                               mine: mine,
+                              text: m['text'] as String?,
                               current: (m['reactions']
                                   as Map<String, dynamic>?)?[me.uid] as String?),
                           child: Align(
