@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'main.dart';
+import 'tts.dart';
 
 class PostActions extends StatelessWidget {
   final DocumentReference<Map<String, dynamic>> postRef;
@@ -103,6 +104,9 @@ class PostActions extends StatelessWidget {
                     () => openComments(context)),
                 btn(Icons.share, sh > 0 ? 'شیئر $sh' : 'شیئر',
                     Colors.black54, () => share(context)),
+                if (text.trim().isNotEmpty)
+                  btn(Icons.volume_up, 'سنیں', green,
+                      () => speakText(context, text)),
               ],
             ),
           ],
