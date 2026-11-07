@@ -47,7 +47,7 @@ jobs:
           );
           EOF
 
-      - run: flutter pub add record audioplayers gal video_player flutter_webrtc file_picker geolocator url_launcher && flutter pub get
+      - run: flutter pub add record audioplayers gal video_player flutter_webrtc file_picker geolocator url_launcher google_fonts && flutter pub get
 
       - name: Make app icon
         continue-on-error: true
