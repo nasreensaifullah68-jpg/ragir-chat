@@ -72,7 +72,7 @@ class CallService extends ChangeNotifier {
         final data = d.data();
         final ts = data['createdAt'] as Timestamp?;
         if (ts != null &&
-            DateTime.now().difference(ts.toDate()).inSeconds > 60) {
+            DateTime.now().difference(ts.toDate()).inSeconds.abs() > 900) {
           continue;
         }
         if (phase != CallPhase.idle) {
@@ -93,7 +93,12 @@ class CallService extends ChangeNotifier {
         _watch();
         notifyListeners();
       }
-    }, onError: (_) {});
+    }, onError: (e) {
+      _say('آنے والی کال سننے میں خرابی: $e');
+      Timer(const Duration(seconds: 8), () {
+        if (_inSub != null) listen(uid);
+      });
+    });
   }
 
   Future<void> stop() async {
