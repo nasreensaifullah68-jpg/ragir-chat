@@ -5,8 +5,10 @@ import 'package:flutter/material.dart';
 import 'channels.dart';
 import 'chat.dart';
 import 'chat_list.dart';
+import 'contact.dart';
 import 'main.dart';
 import 'me.dart';
+import 'settings.dart';
 import 'status.dart';
 import 'ui.dart';
 
@@ -117,6 +119,19 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     } finally {
       if (mounted) setState(() => searching = false);
     }
+  }
+
+  void openContact() {
+    Navigator.of(context).push(MaterialPageRoute(
+        builder: (_) => ContactScreen(onFind: (t) {
+              search.text = t;
+              findPerson();
+            })));
+  }
+
+  void openSettings() {
+    Navigator.of(context)
+        .push(MaterialPageRoute(builder: (_) => const SettingsScreen()));
   }
 
   Future<void> logout() async {
@@ -280,11 +295,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               ),
             ),
             drawerItem(Icons.person, 'میری پروفائل', () => setState(() => tab = 3)),
-            drawerItem(Icons.person_add_alt_1, 'نیا رابطہ', () => soon(context)),
+            drawerItem(Icons.person_add_alt_1, 'نیا رابطہ', openContact),
             drawerItem(Icons.group_add, 'نیا گروپ بنائیں', () => soon(context)),
             drawerItem(Icons.campaign, 'نیا چینل بنائیں', () => setState(() => tab = 1)),
             drawerItem(Icons.qr_code_scanner, 'QR کوڈ سے اسکین کریں', () => soon(context)),
-            drawerItem(Icons.settings, 'سیٹنگز', () => soon(context)),
+            drawerItem(Icons.settings, 'سیٹنگز', openSettings),
             drawerItem(Icons.dark_mode, 'ڈارک موڈ', () => soon(context)),
             drawerItem(Icons.info, 'ایپ کے بارے میں', () => soon(context)),
             const Divider(),
@@ -305,7 +320,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           ? chatsBar()
           : (tab == 3
               ? AppBar(
-                  title: const Text('میرا کھاتا',
+                  title: const Text('میرا پروفائل',
                       style:
                           TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
                   backgroundColor: green,
@@ -317,7 +332,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               backgroundColor: green,
               foregroundColor: Colors.white,
               tooltip: 'نئی چیٹ',
-              onPressed: () => searchFocus.requestFocus(),
+              onPressed: openContact,
               child: const Icon(Icons.edit),
             )
           : null,
