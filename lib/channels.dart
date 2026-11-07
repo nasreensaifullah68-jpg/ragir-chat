@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'channel_page.dart';
 import 'main.dart';
+import 'ui.dart';
 
 class ChannelsScreen extends StatefulWidget {
   final String name;
@@ -15,6 +16,7 @@ class ChannelsScreen extends StatefulWidget {
 class _ChannelsScreenState extends State<ChannelsScreen> {
   final search = TextEditingController();
   String q = '';
+  int tabIdx = 0;
 
   @override
   void dispose() {
@@ -86,16 +88,65 @@ class _ChannelsScreenState extends State<ChannelsScreen> {
     }
   }
 
+  Future<void> toggleFollow(
+      DocumentReference<Map<String, dynamic>> ref, bool following) async {
+    final uid = FirebaseAuth.instance.currentUser!.uid;
+    try {
+      await ref.update({
+        'followers': following
+            ? FieldValue.arrayRemove([uid])
+            : FieldValue.arrayUnion([uid]),
+      });
+    } catch (e) {
+      if (mounted) showMsg(context, 'خرابی: $e');
+    }
+  }
+
+  Widget trailingFor(bool mine, bool following,
+      DocumentReference<Map<String, dynamic>> ref) {
+    if (mine) {
+      return const Text('میرا',
+          style: TextStyle(
+              fontSize: 17, color: green, fontWeight: FontWeight.bold));
+    }
+    return FilledButton(
+      style: FilledButton.styleFrom(
+        backgroundColor: following ? Colors.grey : green,
+        padding: const EdgeInsets.symmetric(horizontal: 18),
+      ),
+      onPressed: () => toggleFollow(ref, following),
+      child: Text(following ? 'فالو ہے' : 'فالو',
+          style: const TextStyle(fontSize: 18)),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final myId = FirebaseAuth.instance.currentUser?.uid ?? '';
     return Scaffold(
       backgroundColor: softBg,
       appBar: AppBar(
-        title: const Text('چینل',
-            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+        toolbarHeight: 70,
+        centerTitle: true,
         backgroundColor: green,
         foregroundColor: Colors.white,
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.campaign, size: 36),
+            const SizedBox(width: 10),
+            Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: const [
+                Text('چینلز',
+                    style:
+                        TextStyle(fontSize: 21, fontWeight: FontWeight.bold)),
+                Text('Channels', style: TextStyle(fontSize: 13)),
+              ],
+            ),
+          ],
+        ),
       ),
       floatingActionButton: FloatingActionButton.extended(
         backgroundColor: green,
@@ -108,7 +159,7 @@ class _ChannelsScreenState extends State<ChannelsScreen> {
         children: [
           Container(
             color: Colors.white,
-            padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+            padding: const EdgeInsets.fromLTRB(12, 10, 12, 0),
             child: TextField(
               controller: search,
               onChanged: (v) => setState(() => q = v.trim().toLowerCase()),
@@ -123,6 +174,14 @@ class _ChannelsScreenState extends State<ChannelsScreen> {
                     borderRadius: BorderRadius.circular(30),
                     borderSide: BorderSide.none),
               ),
+            ),
+          ),
+          Container(
+            color: Colors.white,
+            child: PillTabs(
+              labels: const ['تمام چینلز', 'مقبول', 'میرا چینل'],
+              selected: tabIdx,
+              onTap: (i) => setState(() => tabIdx = i),
             ),
           ),
           Expanded(
@@ -148,10 +207,16 @@ class _ChannelsScreenState extends State<ChannelsScreen> {
                   return const Center(child: CircularProgressIndicator());
                 }
                 final docs = snap.data!.docs.where((d) {
-                  final n = ((d.data()['name'] as String?) ?? '').toLowerCase();
-                  return q.isEmpty || n.contains(q);
+                  final x = d.data();
+                  final n = ((x['name'] as String?) ?? '').toLowerCase();
+                  if (q.isNotEmpty && !n.contains(q)) return false;
+                  if (tabIdx == 2 && x['ownerId'] != myId) return false;
+                  return true;
                 }).toList();
+                int fc(QueryDocumentSnapshot<Map<String, dynamic>> d) =>
+                    ((d.data()['followers'] as List?) ?? []).length;
                 docs.sort((a, b) {
+                  if (tabIdx == 1) return fc(b).compareTo(fc(a));
                   final am = a.data()['ownerId'] == myId ? 0 : 1;
                   final bm = b.data()['ownerId'] == myId ? 0 : 1;
                   return am.compareTo(bm);
@@ -179,13 +244,20 @@ class _ChannelsScreenState extends State<ChannelsScreen> {
                     final about = (d['about'] as String?) ?? '';
                     final ownerName = (d['ownerName'] as String?) ?? '';
                     final ownerId = (d['ownerId'] as String?) ?? '';
+                    final followers = List<String>.from(d['followers'] ?? []);
                     return ListTile(
                       tileColor: Colors.white,
                       contentPadding: const EdgeInsets.symmetric(
                           horizontal: 14, vertical: 6),
-                      leading: CircleAvatar(
-                        radius: 26,
-                        backgroundColor: green,
+                      leading: Container(
+                        width: 56,
+                        height: 56,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: green,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: gold, width: 2.5),
+                        ),
                         child: Text(cname.isEmpty ? '؟' : cname.substring(0, 1),
                             style: const TextStyle(
                                 color: Colors.white, fontSize: 24)),
@@ -194,17 +266,12 @@ class _ChannelsScreenState extends State<ChannelsScreen> {
                           style: const TextStyle(
                               fontSize: 21, fontWeight: FontWeight.bold)),
                       subtitle: Text(
-                          about.isEmpty ? ownerName : '$ownerName • $about',
+                          '${followers.length} فالوور • ${about.isEmpty ? ownerName : about}',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(fontSize: 16)),
-                      trailing: ownerId == myId
-                          ? const Text('میرا',
-                              style: TextStyle(
-                                  fontSize: 16,
-                                  color: green,
-                                  fontWeight: FontWeight.bold))
-                          : null,
+                      trailing: trailingFor(ownerId == myId,
+                          followers.contains(myId), docs[i].reference),
                       onTap: () => Navigator.of(context).push(MaterialPageRoute(
                           builder: (_) => ChannelPage(
                               channelId: docs[i].id,
