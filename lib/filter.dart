@@ -1,11 +1,15 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math' as math;
 import 'dart:typed_data';
 import 'dart:ui' as ui;
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:http/http.dart' as http;
 import 'cloud.dart';
+import 'look.dart';
 import 'main.dart';
 
 final GlobalKey<NavigatorState> navKey = GlobalKey<NavigatorState>();
@@ -25,45 +29,6 @@ Future<String?> uploadImageBytes(Uint8List bytes) async {
   return data['secure_url'] as String?;
 }
 
-List<double> satMatrix(double s) {
-  const r = 0.2126, g = 0.7152, b = 0.0722;
-  return [
-    r * (1 - s) + s, g * (1 - s), b * (1 - s), 0, 0,
-    r * (1 - s), g * (1 - s) + s, b * (1 - s), 0, 0,
-    r * (1 - s), g * (1 - s), b * (1 - s) + s, 0, 0,
-    0, 0, 0, 1, 0,
-  ];
-}
-
-class PhotoFilter {
-  final String name;
-  final List<double> m;
-  const PhotoFilter(this.name, this.m);
-}
-
-final List<PhotoFilter> photoFilters = [
-  const PhotoFilter('اصل', [
-    1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0]),
-  PhotoFilter('چمکدار', satMatrix(1.6)),
-  const PhotoFilter('روشن', [
-    1.15, 0, 0, 0, 25, 0, 1.15, 0, 0, 25, 0, 0, 1.15, 0, 25, 0, 0, 0, 1, 0]),
-  const PhotoFilter('گرم', [
-    1.12, 0, 0, 0, 12, 0, 1.0, 0, 0, 0, 0, 0, 0.82, 0, 0, 0, 0, 0, 1, 0]),
-  const PhotoFilter('ٹھنڈا', [
-    0.88, 0, 0, 0, 0, 0, 1.0, 0, 0, 0, 0, 0, 1.18, 0, 12, 0, 0, 0, 1, 0]),
-  const PhotoFilter('ڈرامائی', [
-    1.4, 0, 0, 0, -51, 0, 1.4, 0, 0, -51, 0, 0, 1.4, 0, -51, 0, 0, 0, 1, 0]),
-  const PhotoFilter('پرانا', [
-    0.6, 0.35, 0.1, 0, 15, 0.25, 0.6, 0.1, 0, 10, 0.2, 0.3, 0.4, 0, 10,
-    0, 0, 0, 1, 0]),
-  const PhotoFilter('سیپیا', [
-    0.393, 0.769, 0.189, 0, 0, 0.349, 0.686, 0.168, 0, 0, 0.272, 0.534,
-    0.131, 0, 0, 0, 0, 0, 1, 0]),
-  const PhotoFilter('کالا سفید', [
-    0.2126, 0.7152, 0.0722, 0, 0, 0.2126, 0.7152, 0.0722, 0, 0, 0.2126,
-    0.7152, 0.0722, 0, 0, 0, 0, 0, 1, 0]),
-];
-
 class FilterScreen extends StatefulWidget {
   final String path;
   final bool hd;
@@ -76,14 +41,24 @@ class FilterScreen extends StatefulWidget {
 class _FilterScreenState extends State<FilterScreen> {
   final boundaryKey = GlobalKey();
   Uint8List? bytes;
+  ui.Image? orig;
+  ui.Image? enh;
   double ratio = 1;
   int sel = 0;
   bool busy = false;
+  bool enhance = true;
+  double blur = 0;
 
   @override
   void initState() {
     super.initState();
     load();
+  }
+
+  Future<ui.Image> fromPixels(Uint8List px, int w, int h) {
+    final c = Completer<ui.Image>();
+    ui.decodeImageFromPixels(px, w, h, ui.PixelFormat.rgba8888, c.complete);
+    return c.future;
   }
 
   Future<void> load() async {
@@ -92,12 +67,24 @@ class _FilterScreenState extends State<FilterScreen> {
     if (!mounted) return;
     setState(() {
       bytes = b;
+      orig = im;
       ratio = im.width / im.height;
     });
+    try {
+      final bd = await im.toByteData(format: ui.ImageByteFormat.rawRgba);
+      if (bd == null) return;
+      final px = bd.buffer.asUint8List();
+      final out = await compute(enhancePixels, EnhanceJob(px, 1.0));
+      if (identical(out, px)) return;
+      final e = await fromPixels(out, im.width, im.height);
+      if (mounted) setState(() => enh = e);
+    } catch (_) {}
   }
 
+  ui.Image? get current => (enhance && enh != null) ? enh : orig;
+
   Future<void> done() async {
-    if (sel == 0 && bytes != null) {
+    if (sel == 0 && blur == 0 && (!enhance || enh == null) && bytes != null) {
       Navigator.pop(context, bytes);
       return;
     }
@@ -105,12 +92,18 @@ class _FilterScreenState extends State<FilterScreen> {
     try {
       final rb = boundaryKey.currentContext!.findRenderObject()
           as RenderRepaintBoundary;
-      final target = widget.hd ? 1800 : 900;
-      final pr = (target / rb.size.width).clamp(1.0, 4.0).toDouble();
-      final img = await rb.toImage(pixelRatio: pr);
-      final bd = await img.toByteData(format: ui.ImageByteFormat.png);
+      final target = widget.hd ? 1500 : 900;
+      var pr = (target / rb.size.width).clamp(1.0, 4.0).toDouble();
+      Uint8List out;
+      while (true) {
+        final img = await rb.toImage(pixelRatio: pr);
+        final bd = await img.toByteData(format: ui.ImageByteFormat.png);
+        out = bd!.buffer.asUint8List();
+        if (out.length < 9 * 1024 * 1024 || pr <= 1.0) break;
+        pr = math.max(1.0, pr * 0.7);
+      }
       if (!mounted) return;
-      Navigator.pop(context, bd!.buffer.asUint8List());
+      Navigator.pop(context, out);
     } catch (e) {
       if (!mounted) return;
       setState(() => busy = false);
@@ -118,9 +111,74 @@ class _FilterScreenState extends State<FilterScreen> {
     }
   }
 
+  Widget photo(ui.Image im) {
+    final raw = RawImage(image: im, fit: BoxFit.fill);
+    if (blur <= 0) return raw;
+    final s = blur * 14;
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        ImageFiltered(
+          imageFilter: ui.ImageFilter.blur(sigmaX: s, sigmaY: s),
+          child: raw,
+        ),
+        ShaderMask(
+          blendMode: BlendMode.dstIn,
+          shaderCallback: (r) => const RadialGradient(
+            radius: 0.7,
+            colors: [Colors.white, Colors.white, Color(0x00FFFFFF)],
+            stops: [0.0, 0.4, 0.8],
+          ).createShader(r),
+          child: raw,
+        ),
+      ],
+    );
+  }
+
+  Widget controls() {
+    return Container(
+      color: Colors.black,
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                    enh == null && enhance
+                        ? '✨ روشنی تیار ہو رہی ہے...'
+                        : '✨ اندھیرے میں خودکار روشنی',
+                    style: const TextStyle(color: Colors.white, fontSize: 16)),
+              ),
+              Switch(
+                value: enhance,
+                activeThumbColor: Colors.greenAccent,
+                onChanged: (v) => setState(() => enhance = v),
+              ),
+            ],
+          ),
+          Row(
+            children: [
+              const Text('پس منظر دھندلا',
+                  style: TextStyle(color: Colors.white, fontSize: 16)),
+              Expanded(
+                child: Slider(
+                  value: blur,
+                  activeColor: Colors.greenAccent,
+                  onChanged: (v) => setState(() => blur = v),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final b = bytes;
+    final cur = current;
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
@@ -128,7 +186,7 @@ class _FilterScreenState extends State<FilterScreen> {
         foregroundColor: Colors.white,
         title: const Text('فلٹر چنیں'),
       ),
-      body: b == null
+      body: (b == null || cur == null)
           ? const Center(child: CircularProgressIndicator())
           : Column(
               children: [
@@ -141,12 +199,13 @@ class _FilterScreenState extends State<FilterScreen> {
                         child: ColorFiltered(
                           colorFilter:
                               ColorFilter.matrix(photoFilters[sel].m),
-                          child: Image.memory(b, fit: BoxFit.fill),
+                          child: photo(cur),
                         ),
                       ),
                     ),
                   ),
                 ),
+                controls(),
                 SizedBox(
                   height: 112,
                   child: ListView.builder(
