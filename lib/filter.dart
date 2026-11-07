@@ -66,7 +66,8 @@ final List<PhotoFilter> photoFilters = [
 
 class FilterScreen extends StatefulWidget {
   final String path;
-  const FilterScreen({super.key, required this.path});
+  final bool hd;
+  const FilterScreen({super.key, required this.path, this.hd = false});
 
   @override
   State<FilterScreen> createState() => _FilterScreenState();
@@ -96,11 +97,16 @@ class _FilterScreenState extends State<FilterScreen> {
   }
 
   Future<void> done() async {
+    if (sel == 0 && bytes != null) {
+      Navigator.pop(context, bytes);
+      return;
+    }
     setState(() => busy = true);
     try {
       final rb = boundaryKey.currentContext!.findRenderObject()
           as RenderRepaintBoundary;
-      final pr = (1200 / rb.size.width).clamp(1.0, 3.0).toDouble();
+      final target = widget.hd ? 1800 : 900;
+      final pr = (target / rb.size.width).clamp(1.0, 4.0).toDouble();
       final img = await rb.toImage(pixelRatio: pr);
       final bd = await img.toByteData(format: ui.ImageByteFormat.png);
       if (!mounted) return;
