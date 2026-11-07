@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'del.dart';
 import 'main.dart';
+import 'tts.dart';
 
 const quickEmojis = ['👍', '❤️', '😂', '😮', '😢', '🙏'];
 
@@ -57,6 +58,7 @@ Future<void> showReactSheet(
   required DocumentReference<Map<String, dynamic>> ref,
   required bool mine,
   required String? current,
+  String? text,
 }) {
   return showModalBottomSheet(
     context: context,
@@ -111,6 +113,15 @@ Future<void> showReactSheet(
                 setReaction(context, ref, null);
               },
             ),
+          if (text != null && text.trim().isNotEmpty)
+            ListTile(
+              leading: const Icon(Icons.volume_up, color: green),
+              title: const Text('سنیں', style: TextStyle(fontSize: 19)),
+              onTap: () {
+                Navigator.pop(ctx);
+                speakText(context, text);
+              },
+            ),
           if (mine)
             ListTile(
               leading: const Icon(Icons.delete, color: Colors.red),
@@ -160,4 +171,3 @@ class ReactionRow extends StatelessWidget {
     );
   }
 }
-
