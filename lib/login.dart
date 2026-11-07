@@ -1,6 +1,8 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'main.dart';
+import 'orbit.dart';
+import 'ui.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -69,104 +71,132 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: softBg,
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              children: [
-                Container(
-                  width: 100,
-                  height: 100,
-                  decoration:
-                      const BoxDecoration(color: green, shape: BoxShape.circle),
-                  child: const Icon(Icons.chat_bubble_rounded,
-                      color: Colors.white, size: 54),
-                ),
-                const SizedBox(height: 20),
-                const Text('رَاگیر چیٹ',
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0xFF2FBF71), Color(0xFF0B6B3A)],
+          ),
+        ),
+        child: SafeArea(
+          child: Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                children: [
+                  const OrbitBadge(size: 230, child: BrandLogo(size: 100)),
+                  const Text(
+                    'راہگیر چیٹ',
                     style: TextStyle(
-                        fontSize: 36,
-                        fontWeight: FontWeight.bold,
-                        color: green)),
-                const SizedBox(height: 8),
-                const Text('اپنے فون نمبر سے داخل ہوں',
-                    style: TextStyle(fontSize: 22)),
-                const SizedBox(height: 28),
-                Directionality(
-                  textDirection: TextDirection.ltr,
-                  child: Column(
-                    children: [
-                      TextField(
-                        controller: phone,
-                        keyboardType: TextInputType.phone,
-                        style: const TextStyle(fontSize: 24),
-                        decoration: InputDecoration(
-                          prefixText: '+92 ',
-                          hintText: '3XX XXXXXXX',
-                          filled: true,
-                          fillColor: Colors.white,
-                          border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(16)),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      TextField(
-                        controller: pass,
-                        obscureText: hide,
-                        style: const TextStyle(fontSize: 24),
-                        decoration: InputDecoration(
-                          hintText: 'Password',
-                          filled: true,
-                          fillColor: Colors.white,
-                          suffixIcon: IconButton(
-                            icon: Icon(hide
-                                ? Icons.visibility
-                                : Icons.visibility_off),
-                            onPressed: () => setState(() => hide = !hide),
+                      fontSize: 40,
+                      fontWeight: FontWeight.bold,
+                      color: gold,
+                      shadows: [
+                        Shadow(
+                            color: Color(0x66000000),
+                            blurRadius: 6,
+                            offset: Offset(0, 3)),
+                      ],
+                    ),
+                  ),
+                  const Text('Rahgeer Chat',
+                      style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white)),
+                  const SizedBox(height: 18),
+                  Container(
+                    padding: const EdgeInsets.all(18),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(24),
+                    ),
+                    child: Column(
+                      children: [
+                        const Text('اپنے فون نمبر سے داخل ہوں',
+                            style: TextStyle(
+                                fontSize: 22, fontWeight: FontWeight.bold)),
+                        const SizedBox(height: 16),
+                        Directionality(
+                          textDirection: TextDirection.ltr,
+                          child: Column(
+                            children: [
+                              TextField(
+                                controller: phone,
+                                keyboardType: TextInputType.phone,
+                                style: const TextStyle(fontSize: 24),
+                                decoration: InputDecoration(
+                                  prefixText: '+92 ',
+                                  hintText: '3XX XXXXXXX',
+                                  filled: true,
+                                  fillColor: softBg,
+                                  border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(16)),
+                                ),
+                              ),
+                              const SizedBox(height: 14),
+                              TextField(
+                                controller: pass,
+                                obscureText: hide,
+                                style: const TextStyle(fontSize: 24),
+                                decoration: InputDecoration(
+                                  hintText: 'Password',
+                                  filled: true,
+                                  fillColor: softBg,
+                                  suffixIcon: IconButton(
+                                    icon: Icon(hide
+                                        ? Icons.visibility
+                                        : Icons.visibility_off),
+                                    onPressed: () =>
+                                        setState(() => hide = !hide),
+                                  ),
+                                  border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(16)),
+                                ),
+                              ),
+                            ],
                           ),
-                          border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(16)),
                         ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 24),
-                SizedBox(
-                  width: double.infinity,
-                  height: 60,
-                  child: FilledButton(
-                    style: FilledButton.styleFrom(
-                      backgroundColor: green,
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16)),
+                        const SizedBox(height: 18),
+                        SizedBox(
+                          width: double.infinity,
+                          height: 60,
+                          child: FilledButton(
+                            style: FilledButton.styleFrom(
+                              backgroundColor: green,
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(16)),
+                            ),
+                            onPressed: loading ? null : () => submit(false),
+                            child: loading
+                                ? const CircularProgressIndicator(
+                                    color: Colors.white)
+                                : const Text('داخل ہوں',
+                                    style: TextStyle(fontSize: 24)),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        SizedBox(
+                          width: double.infinity,
+                          height: 56,
+                          child: OutlinedButton(
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: green,
+                              side: const BorderSide(color: green, width: 2),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(16)),
+                            ),
+                            onPressed: loading ? null : () => submit(true),
+                            child: const Text('نیا کھاتا بنائیں',
+                                style: TextStyle(fontSize: 22)),
+                          ),
+                        ),
+                      ],
                     ),
-                    onPressed: loading ? null : () => submit(false),
-                    child: loading
-                        ? const CircularProgressIndicator(color: Colors.white)
-                        : const Text('داخل ہوں',
-                            style: TextStyle(fontSize: 24)),
                   ),
-                ),
-                const SizedBox(height: 12),
-                SizedBox(
-                  width: double.infinity,
-                  height: 56,
-                  child: OutlinedButton(
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: green,
-                      side: const BorderSide(color: green, width: 2),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16)),
-                    ),
-                    onPressed: loading ? null : () => submit(true),
-                    child: const Text('نیا کھاتا بنائیں',
-                        style: TextStyle(fontSize: 22)),
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
