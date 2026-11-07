@@ -47,7 +47,7 @@ jobs:
           );
           EOF
 
-      - run: flutter pub add record audioplayers gal video_player flutter_webrtc file_picker geolocator url_launcher google_fonts && flutter pub get
+      - run: flutter pub add record audioplayers gal video_player flutter_webrtc file_picker geolocator url_launcher google_fonts flutter_tts && flutter pub get
 
       - name: Make app icon
         continue-on-error: true
@@ -60,6 +60,11 @@ jobs:
         run: |
           sed -i 's|<application|<uses-permission android:name="android.permission.INTERNET"/>\n    <uses-permission android:name="android.permission.RECORD_AUDIO"/>\n    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS"/>\n    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>\n    <uses-permission android:name="android.permission.CHANGE_NETWORK_STATE"/>\n    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>\n    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>\n    <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30"/>\n    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" android:maxSdkVersion="30"/>\n    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT"/>\n    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28"/>\n    <application|' android/app/src/main/AndroidManifest.xml
           grep -n "uses-permission" android/app/src/main/AndroidManifest.xml
+
+      - name: Allow text to speech service
+        run: |
+          sed -i 's|<application|<queries><intent><action android:name="android.intent.action.TTS_SERVICE"/></intent></queries>\n    <application|' android/app/src/main/AndroidManifest.xml
+          grep -n "queries" android/app/src/main/AndroidManifest.xml
 
       - name: Set minimum Android version for calls
         run: |
