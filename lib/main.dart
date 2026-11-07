@@ -33,7 +33,7 @@ class RagirChatApp extends StatelessWidget {
       theme: ThemeData(
         useMaterial3: true,
         colorSchemeSeed: green,
-        textTheme: GoogleFonts.notoNastaliqUrduTextTheme(),
+        fontFamily: GoogleFonts.notoNastaliqUrdu().fontFamily,
       ),
       home: StreamBuilder<User?>(
         stream: FirebaseAuth.instance.authStateChanges(),
