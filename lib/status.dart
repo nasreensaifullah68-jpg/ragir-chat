@@ -1,10 +1,12 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'avatar.dart';
 import 'camera.dart';
 import 'main.dart';
 import 'media.dart';
 import 'status_card.dart';
+import 'ui.dart';
 import 'vid.dart';
 
 class StatusScreen extends StatefulWidget {
@@ -17,6 +19,7 @@ class StatusScreen extends StatefulWidget {
 
 class _StatusScreenState extends State<StatusScreen> {
   bool uploading = false;
+  int sTab = 0;
 
   Future<void> post(Map<String, dynamic> data) async {
     final me = FirebaseAuth.instance.currentUser!;
@@ -146,16 +149,125 @@ class _StatusScreenState extends State<StatusScreen> {
     );
   }
 
+  Widget note(String t) {
+    return Padding(
+      padding: const EdgeInsets.all(28),
+      child: Text(t,
+          textAlign: TextAlign.center,
+          style: const TextStyle(fontSize: 22, color: Colors.black54)),
+    );
+  }
+
+  Widget myHeader(String myId) {
+    return Card(
+      color: Colors.white,
+      margin: const EdgeInsets.fromLTRB(0, 0, 0, 8),
+      child: ListTile(
+        onTap: uploading ? null : chooseType,
+        contentPadding: const EdgeInsets.all(12),
+        leading: Stack(
+          children: [
+            UserAvatar(uid: myId, name: widget.name, radius: 30),
+            Positioned(
+              bottom: 0,
+              left: 0,
+              child: Container(
+                width: 24,
+                height: 24,
+                decoration: const BoxDecoration(
+                    color: green, shape: BoxShape.circle),
+                child: const Icon(Icons.add, color: Colors.white, size: 18),
+              ),
+            ),
+          ],
+        ),
+        title: const Text('میرا اسٹیٹس',
+            style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+        subtitle: const Text('نیا اسٹیٹس لگانے کے لیے دبائیں',
+            style: TextStyle(fontSize: 16)),
+      ),
+    );
+  }
+
+  Widget othersRow(Map<String, String> people) {
+    final ids = people.keys.toList();
+    return SizedBox(
+      height: 118,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: ids.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 12),
+        itemBuilder: (context, i) {
+          final nm = people[ids[i]] ?? '';
+          return SizedBox(
+            width: 76,
+            child: Column(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(3),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(color: green, width: 3),
+                  ),
+                  child: UserAvatar(uid: ids[i], name: nm, radius: 30),
+                ),
+                const SizedBox(height: 4),
+                Text(nm,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 15)),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final myId = FirebaseAuth.instance.currentUser?.uid ?? '';
     final since = Timestamp.fromDate(
         DateTime.now().subtract(const Duration(hours: 24)));
     return Scaffold(
       backgroundColor: softBg,
       appBar: AppBar(
-        title: const Text('اسٹیٹس'),
+        toolbarHeight: 70,
+        centerTitle: true,
         backgroundColor: green,
         foregroundColor: Colors.white,
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const BrandLogo(size: 40),
+            const SizedBox(width: 10),
+            Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: const [
+                Text('اسٹیٹس',
+                    style:
+                        TextStyle(fontSize: 21, fontWeight: FontWeight.bold)),
+                Text('Status', style: TextStyle(fontSize: 13)),
+              ],
+            ),
+          ],
+        ),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: InkResponse(
+              onTap: uploading ? null : chooseType,
+              child: Container(
+                width: 42,
+                height: 42,
+                decoration: const BoxDecoration(
+                    color: Colors.white, shape: BoxShape.circle),
+                child: const Icon(Icons.add, color: green, size: 30),
+              ),
+            ),
+          ),
+        ],
         bottom: uploading
             ? const PreferredSize(
                 preferredSize: Size.fromHeight(4),
@@ -169,49 +281,77 @@ class _StatusScreenState extends State<StatusScreen> {
         icon: const Icon(Icons.add),
         label: const Text('اسٹیٹس لگائیں', style: TextStyle(fontSize: 20)),
       ),
-      body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-        stream: FirebaseFirestore.instance
-            .collection('statuses')
-            .where('createdAt', isGreaterThan: since)
-            .orderBy('createdAt', descending: true)
-            .snapshots(),
-        builder: (context, snap) {
-          if (snap.hasError) {
-            return Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Directionality(
-                  textDirection: TextDirection.ltr,
-                  child: Text('خرابی: ${snap.error}'),
-                ),
-              ),
-            );
-          }
-          if (!snap.hasData) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          final docs = snap.data!.docs;
-          if (docs.isEmpty) {
-            return const Center(
-              child: Padding(
-                padding: EdgeInsets.all(24),
-                child: Text('ابھی کوئی اسٹیٹس نہیں۔\nنیچے "اسٹیٹس لگائیں" دبائیں',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 22)),
-              ),
-            );
-          }
-          return ListView.builder(
-            padding: const EdgeInsets.fromLTRB(12, 12, 12, 100),
-            itemCount: docs.length,
-            itemBuilder: (context, i) => StatusCard(
-              key: ValueKey(docs[i].id),
-              ref: docs[i].reference,
-              d: docs[i].data(),
-              myName: widget.name,
+      body: Column(
+        children: [
+          Container(
+            color: Colors.white,
+            child: PillTabs(
+              labels: const ['میرے اسٹیٹس', 'دوسروں کے اسٹیٹس'],
+              selected: sTab,
+              onTap: (i) => setState(() => sTab = i),
             ),
-          );
-        },
+          ),
+          Expanded(
+            child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+              stream: FirebaseFirestore.instance
+                  .collection('statuses')
+                  .where('createdAt', isGreaterThan: since)
+                  .orderBy('createdAt', descending: true)
+                  .snapshots(),
+              builder: (context, snap) {
+                if (snap.hasError) {
+                  return Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Directionality(
+                        textDirection: TextDirection.ltr,
+                        child: Text('خرابی: ${snap.error}'),
+                      ),
+                    ),
+                  );
+                }
+                if (!snap.hasData) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                final docs = snap.data!.docs;
+                final mine =
+                    docs.where((x) => x.data()['authorId'] == myId).toList();
+                final others =
+                    docs.where((x) => x.data()['authorId'] != myId).toList();
+                final people = <String, String>{};
+                for (final x in others) {
+                  final dd = x.data();
+                  people[(dd['authorId'] as String?) ?? ''] =
+                      (dd['authorName'] as String?) ?? '';
+                }
+                final shown = sTab == 0 ? mine : others;
+                final kids = <Widget>[];
+                if (sTab == 0) {
+                  kids.add(myHeader(myId));
+                  if (mine.isEmpty) kids.add(note('آپ نے ابھی کوئی اسٹیٹس نہیں لگایا'));
+                } else {
+                  if (others.isEmpty) {
+                    kids.add(note('ابھی کسی اور کا اسٹیٹس نہیں'));
+                  } else {
+                    kids.add(othersRow(people));
+                  }
+                }
+                for (final x in shown) {
+                  kids.add(StatusCard(
+                    key: ValueKey(x.id),
+                    ref: x.reference,
+                    d: x.data(),
+                    myName: widget.name,
+                  ));
+                }
+                return ListView(
+                  padding: const EdgeInsets.fromLTRB(12, 12, 12, 100),
+                  children: kids,
+                );
+              },
+            ),
+          ),
+        ],
       ),
     );
   }
