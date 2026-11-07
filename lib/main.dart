@@ -8,6 +8,7 @@ import 'filter.dart';
 import 'firebase_options.dart';
 import 'home.dart';
 import 'login.dart';
+import 'splash.dart';
 
 const green = Color(0xFF0F8A5F);
 const softBg = Color(0xFFF4FBF7);
@@ -35,16 +36,40 @@ class RagirChatApp extends StatelessWidget {
         colorSchemeSeed: green,
         fontFamily: GoogleFonts.notoNastaliqUrdu().fontFamily,
       ),
-      home: StreamBuilder<User?>(
-        stream: FirebaseAuth.instance.authStateChanges(),
-        builder: (context, snap) {
-          if (snap.connectionState == ConnectionState.waiting) {
-            return const Scaffold(
-                body: Center(child: CircularProgressIndicator()));
-          }
-          return snap.data != null ? const HomeGate() : const LoginScreen();
-        },
-      ),
+      home: const Boot(),
+    );
+  }
+}
+
+class Boot extends StatefulWidget {
+  const Boot({super.key});
+
+  @override
+  State<Boot> createState() => _BootState();
+}
+
+class _BootState extends State<Boot> {
+  bool ready = false;
+
+  @override
+  void initState() {
+    super.initState();
+    Future.delayed(const Duration(milliseconds: 2200), () {
+      if (mounted) setState(() => ready = true);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!ready) return const SplashScreen();
+    return StreamBuilder<User?>(
+      stream: FirebaseAuth.instance.authStateChanges(),
+      builder: (context, snap) {
+        if (snap.connectionState == ConnectionState.waiting) {
+          return const SplashScreen();
+        }
+        return snap.data != null ? const HomeGate() : const LoginScreen();
+      },
     );
   }
 }
@@ -80,10 +105,7 @@ class HomeGate extends StatelessWidget {
             ),
           );
         }
-        if (!snap.hasData) {
-          return const Scaffold(
-              body: Center(child: CircularProgressIndicator()));
-        }
+        if (!snap.hasData) return const SplashScreen();
         final name = snap.data!.data()?['name'] as String?;
         if (name == null || name.isEmpty) return const NameScreen();
         return HomeScreen(name: name);
