@@ -4,6 +4,9 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'call_cfg.dart';
+import 'call_tone.dart';
+
+part 'call_extra.dart';
 
 enum CallPhase { idle, outgoing, incoming, connecting, connected }
 
@@ -23,6 +26,10 @@ class CallService extends ChangeNotifier {
   String ice = '';
   MediaStream? remoteStream;
   MediaStream? get localStream => _local;
+  final RingTone _tone = RingTone();
+  int _h = 0, _s = 0, _r = 0;
+  bool _gotTrack = false;
+  Timer? _linkTimer;
 
   String? _callId;
   String _role = 'caller';
@@ -43,11 +50,36 @@ class CallService extends ChangeNotifier {
   CollectionReference<Map<String, dynamic>> get _calls =>
       FirebaseFirestore.instance.collection('calls');
 
+  @override
+  void notifyListeners() {
+    if (phase == CallPhase.outgoing || phase == CallPhase.incoming) {
+      _tone.play();
+    } else {
+      _tone.stop();
+    }
+    super.notifyListeners();
+  }
+
+  void _dbg(String st) {
+    ice = '$st h$_h s$_s r$_r ${_gotTrack ? "▶" : "–"}';
+    notifyListeners();
+  }
+
+  void _armLink() {
+    _linkTimer?.cancel();
+    _linkTimer = Timer(const Duration(seconds: 30), () {
+      if (phase == CallPhase.connecting) {
+        _say('کنکشن نہیں بن سکا۔ دونوں فون کا انٹرنیٹ دیکھیں');
+        hangUp();
+      }
+    });
+  }
+
   void _say(String t) {
     note = t;
     notifyListeners();
     _noteTimer?.cancel();
-    _noteTimer = Timer(const Duration(seconds: 5), () {
+    _noteTimer = Timer(const Duration(seconds: 9), () {
       note = null;
       notifyListeners();
     });
@@ -102,12 +134,17 @@ class CallService extends ChangeNotifier {
   }
 
   Future<void> _openMic() async {
-    _local = await navigator.mediaDevices
-        .getUserMedia({
-      'audio': true,
-      'video': video
-          ? {'facingMode': 'user', 'width': 640, 'height': 480}
-          : false,
+    try {
+      await Helper.setAndroidAudioConfiguration(
+          AndroidAudioConfiguration.communication);
+    } catch (_) {}
+    _local = await navigator.mediaDevices.getUserMedia({
+      'audio': {
+        'echoCancellation': true,
+        'noiseSuppression': true,
+        'autoGainControl': true,
+      },
+      'video': video ? {'facingMode': 'user'} : false,
     });
   }
 
@@ -120,22 +157,25 @@ class CallService extends ChangeNotifier {
     }
     pc.onIceCandidate = (c) {
       if (c.candidate == null) return;
+      final t = candType(c.candidate!);
+      if (t == 'h') _h++;
+      if (t == 's') _s++;
+      if (t == 'r') _r++;
       _sendCand(Map<String, dynamic>.from(c.toMap() as Map));
     };
     pc.onTrack = (e) {
       e.track.enabled = true;
-      if (e.streams.isNotEmpty) {
-        remoteStream = e.streams.first;
-        notifyListeners();
-      }
+      _gotTrack = true;
+      if (e.streams.isNotEmpty) remoteStream = e.streams.first;
+      _dbg(ice.split(' ').first);
     };
     pc.onIceConnectionState = (st) {
-      ice = st.name.replaceFirst('RTCIceConnectionState', '');
-      notifyListeners();
+      _dbg(st.name.replaceFirst('RTCIceConnectionState', ''));
       if (st == RTCIceConnectionState.RTCIceConnectionStateConnected ||
           st == RTCIceConnectionState.RTCIceConnectionStateCompleted) {
         if (phase == CallPhase.connecting || phase == CallPhase.outgoing) {
           phase = CallPhase.connected;
+          _linkTimer?.cancel();
           seconds = 0;
           speaker = true;
           try {
@@ -201,6 +241,7 @@ class CallService extends ChangeNotifier {
           _answerSet = true;
           _ringTimer?.cancel();
           phase = CallPhase.connecting;
+          _armLink();
           notifyListeners();
           final a = Map<String, dynamic>.from(d['answer'] as Map);
           await _pc?.setRemoteDescription(RTCSessionDescription(
@@ -279,6 +320,7 @@ class CallService extends ChangeNotifier {
     if (phase != CallPhase.incoming || _ref == null) return;
     _ringTimer?.cancel();
     phase = CallPhase.connecting;
+    _armLink();
     notifyListeners();
     try {
       await _openMic();
@@ -311,43 +353,12 @@ class CallService extends ChangeNotifier {
     } catch (_) {}
   }
 
-  void toggleMute() {
-    muted = !muted;
-    for (final t in _local?.getAudioTracks() ?? <MediaStreamTrack>[]) {
-      t.enabled = !muted;
-    }
-    notifyListeners();
-  }
-
-  void toggleCam() {
-    camOff = !camOff;
-    for (final t in _local?.getVideoTracks() ?? <MediaStreamTrack>[]) {
-      t.enabled = !camOff;
-    }
-    notifyListeners();
-  }
-
-  Future<void> flipCam() async {
-    final v = _local?.getVideoTracks();
-    if (v == null || v.isEmpty) return;
-    try {
-      await Helper.switchCamera(v.first);
-    } catch (_) {}
-  }
-
-  void toggleSpeaker() {
-    speaker = !speaker;
-    try {
-      Helper.setSpeakerphoneOn(speaker);
-    } catch (_) {}
-    notifyListeners();
-  }
-
   Future<void> _cleanup() async {
     _callSub?.cancel();
     _candSub?.cancel();
     _timer?.cancel();
     _ringTimer?.cancel();
+    _linkTimer?.cancel();
     _callSub = null;
     _candSub = null;
     _timer = null;
@@ -372,6 +383,8 @@ class CallService extends ChangeNotifier {
     video = false;
     camOff = false;
     ice = '';
+    _h = _s = _r = 0;
+    _gotTrack = false;
     remoteStream = null;
     otherId = '';
     seconds = 0;
