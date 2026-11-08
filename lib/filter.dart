@@ -14,6 +14,8 @@ import 'main.dart';
 
 final GlobalKey<NavigatorState> navKey = GlobalKey<NavigatorState>();
 
+int startFilter = 0;
+
 Future<String?> uploadImageBytes(Uint8List bytes) async {
   final req = http.MultipartRequest(
       'POST',
@@ -52,6 +54,8 @@ class _FilterScreenState extends State<FilterScreen> {
   @override
   void initState() {
     super.initState();
+    sel = startFilter.clamp(0, photoFilters.length - 1).toInt();
+    startFilter = 0;
     load();
   }
 
