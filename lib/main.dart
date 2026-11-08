@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'call_ui.dart';
 import 'filter.dart';
-import 'gate.dart';
 import 'firebase_options.dart';
 import 'home.dart';
 import 'login.dart';
@@ -108,8 +107,13 @@ class HomeGate extends StatelessWidget {
         }
         if (!snap.hasData) return const SplashScreen();
         final name = snap.data!.data()?['name'] as String?;
+        if (snap.data!.data()?['email'] == null && name != null) {
+          snap.data!.reference.set({
+            'email': (user.email ?? '').trim().toLowerCase(),
+          }, SetOptions(merge: true));
+        }
         if (name == null || name.isEmpty) return const NameScreen();
-        return DeviceGate(child: HomeScreen(name: name));
+        return HomeScreen(name: name);
       },
     );
   }
@@ -135,11 +139,10 @@ class _NameScreenState extends State<NameScreen> {
     setState(() => loading = true);
     try {
       final user = FirebaseAuth.instance.currentUser!;
-      final phone = user.phoneNumber ??
-          '+${(user.email ?? '').split('@').first}';
+      final mail = (user.email ?? '').trim().toLowerCase();
       await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
         'name': name,
-        'phone': phone,
+        'email': mail,
         'createdAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
     } catch (e) {
@@ -170,7 +173,7 @@ class _NameScreenState extends State<NameScreen> {
                 style: const TextStyle(fontSize: 26),
                 decoration: InputDecoration(
                   filled: true,
-                  fillColor: Colors.white,
+                  fillColor: softBg,
                   hintText: 'یہاں نام لکھیں',
                   border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(16)),
