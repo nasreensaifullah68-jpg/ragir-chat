@@ -78,7 +78,7 @@ class MeTab extends StatelessWidget {
             row(Icons.settings, green, 'اکاؤنٹ کی ترتیبات', () => soon(context)),
             row(Icons.lock, green, 'پرائیویسی اور سیکیورٹی',
                 () => soon(context)),
-            row(Icons.notifications, green, 'نوٹیفکیशنز', () => soon(context)),
+            row(Icons.notifications, green, 'نوٹیفکیشنز', () => soon(context)),
             row(Icons.help, green, 'مدد اور سپورٹ', () => soon(context)),
             row(Icons.logout, Colors.red, 'لاگ آؤٹ', onLogout),
           ],
@@ -161,8 +161,8 @@ class _StatsState extends State<_Stats> {
       ),
       child: Row(
         children: [
-          cell(friends, 'दोस्त'),
-          cell(channels, 'चینلز'),
+          cell(friends, 'دوست'),
+          cell(channels, 'چینلز'),
           cell(statuses, 'اسٹیٹس'),
         ],
       ),
