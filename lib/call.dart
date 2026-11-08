@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
+import 'call_cfg.dart';
 
 enum CallPhase { idle, outgoing, incoming, connecting, connected }
 
@@ -17,6 +18,11 @@ class CallService extends ChangeNotifier {
   bool muted = false;
   bool speaker = false;
   int seconds = 0;
+  bool video = false;
+  bool camOff = false;
+  String ice = '';
+  MediaStream? remoteStream;
+  MediaStream? get localStream => _local;
 
   String? _callId;
   String _role = 'caller';
@@ -33,19 +39,6 @@ class CallService extends ChangeNotifier {
   bool _docReady = false;
   final List<Map<String, dynamic>> _pending = [];
   Map<String, dynamic>? _offer;
-
-  final Map<String, dynamic> _config = {
-    'iceServers': [
-      {
-        'urls': [
-          'stun:stun.l.google.com:19302',
-          'stun:stun1.l.google.com:19302',
-          'stun:stun2.l.google.com:19302',
-        ]
-      }
-    ],
-    'sdpSemantics': 'unified-plan',
-  };
 
   CollectionReference<Map<String, dynamic>> get _calls =>
       FirebaseFirestore.instance.collection('calls');
@@ -83,6 +76,7 @@ class CallService extends ChangeNotifier {
         _ref = d.reference;
         _role = 'callee';
         _offer = Map<String, dynamic>.from(data['offer'] as Map);
+        video = data['video'] == true;
         otherName = (data['callerName'] as String?) ?? 'نامعلوم';
         otherId = (data['callerId'] as String?) ?? '';
         phase = CallPhase.incoming;
@@ -109,14 +103,19 @@ class CallService extends ChangeNotifier {
 
   Future<void> _openMic() async {
     _local = await navigator.mediaDevices
-        .getUserMedia({'audio': true, 'video': false});
+        .getUserMedia({
+      'audio': true,
+      'video': video
+          ? {'facingMode': 'user', 'width': 640, 'height': 480}
+          : false,
+    });
   }
 
   Future<void> _makePc() async {
     _answerSet = false;
-    final pc = await createPeerConnection(_config);
+    final pc = await createPeerConnection(iceConfig());
     _pc = pc;
-    for (final t in _local!.getAudioTracks()) {
+    for (final t in _local!.getTracks()) {
       await pc.addTrack(t, _local!);
     }
     pc.onIceCandidate = (c) {
@@ -125,8 +124,14 @@ class CallService extends ChangeNotifier {
     };
     pc.onTrack = (e) {
       e.track.enabled = true;
+      if (e.streams.isNotEmpty) {
+        remoteStream = e.streams.first;
+        notifyListeners();
+      }
     };
     pc.onIceConnectionState = (st) {
+      ice = st.name.replaceFirst('RTCIceConnectionState', '');
+      notifyListeners();
       if (st == RTCIceConnectionState.RTCIceConnectionStateConnected ||
           st == RTCIceConnectionState.RTCIceConnectionStateCompleted) {
         if (phase == CallPhase.connecting || phase == CallPhase.outgoing) {
@@ -136,6 +141,11 @@ class CallService extends ChangeNotifier {
           try {
             Helper.setSpeakerphoneOn(true);
           } catch (_) {}
+          Future.delayed(const Duration(seconds: 1), () {
+            try {
+              Helper.setSpeakerphoneOn(true);
+            } catch (_) {}
+          });
           _timer?.cancel();
           _timer = Timer.periodic(const Duration(seconds: 1), (_) {
             seconds++;
@@ -210,12 +220,14 @@ class CallService extends ChangeNotifier {
     }, onError: (_) {});
   }
 
-  Future<void> startCall(String otherId, String name) async {
+  Future<void> startCall(String otherId, String name,
+      {bool video = false}) async {
     final me = FirebaseAuth.instance.currentUser;
     if (me == null || phase != CallPhase.idle) return;
     otherName = name;
     this.otherId = otherId;
     _role = 'caller';
+    this.video = video;
     phase = CallPhase.outgoing;
     notifyListeners();
     try {
@@ -238,6 +250,7 @@ class CallService extends ChangeNotifier {
         'callerName': myName,
         'calleeName': name,
         'status': 'ringing',
+        'video': this.video,
         'offer': {'sdp': offer.sdp, 'type': offer.type},
         'createdAt': FieldValue.serverTimestamp(),
       });
@@ -306,6 +319,22 @@ class CallService extends ChangeNotifier {
     notifyListeners();
   }
 
+  void toggleCam() {
+    camOff = !camOff;
+    for (final t in _local?.getVideoTracks() ?? <MediaStreamTrack>[]) {
+      t.enabled = !camOff;
+    }
+    notifyListeners();
+  }
+
+  Future<void> flipCam() async {
+    final v = _local?.getVideoTracks();
+    if (v == null || v.isEmpty) return;
+    try {
+      await Helper.switchCamera(v.first);
+    } catch (_) {}
+  }
+
   void toggleSpeaker() {
     speaker = !speaker;
     try {
@@ -340,6 +369,10 @@ class CallService extends ChangeNotifier {
     _docReady = false;
     muted = false;
     speaker = false;
+    video = false;
+    camOff = false;
+    ice = '';
+    remoteStream = null;
     otherId = '';
     seconds = 0;
     phase = CallPhase.idle;
