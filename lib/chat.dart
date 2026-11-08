@@ -149,7 +149,8 @@ class _ChatScreenState extends State<ChatScreen> {
           IconButton(
             tooltip: 'ویڈیو کال',
             icon: const Icon(Icons.videocam, size: 28),
-            onPressed: () => soon(context),
+            onPressed: () => CallService.instance
+                .startCall(otherId, widget.otherName, video: true),
           ),
           IconButton(
             tooltip: 'کال کریں',
