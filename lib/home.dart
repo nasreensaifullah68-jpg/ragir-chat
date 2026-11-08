@@ -28,7 +28,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   final search = TextEditingController();
   final searchFocus = FocusNode();
 
-  String get digits => search.text.replaceAll(RegExp(r'[^0-9]'), '');
+  String get q => search.text.trim().toLowerCase();
+  bool get isEmail => RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(q);
 
   Future<void> setOnline(bool on) async {
     final u = FirebaseAuth.instance.currentUser;
@@ -77,34 +78,31 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   Future<void> findPerson() async {
     final me = FirebaseAuth.instance.currentUser!;
-    var d = digits;
-    if (d.startsWith('92')) d = d.substring(2);
-    if (d.startsWith('0')) d = d.substring(1);
-    if (d.length != 10) {
-      showMsg(context, 'پورا نمبر لکھیں (10 ہندسے)');
+    final mail = q;
+    if (!isEmail) {
+      showMsg(context, 'پورا جی میل لکھیں، جیسے name@gmail.com');
       return;
     }
-    final phone = '+92$d';
     setState(() => searching = true);
     try {
       final found = await FirebaseFirestore.instance
           .collection('users')
-          .where('phone', isEqualTo: phone)
+          .where('email', isEqualTo: mail)
           .limit(1)
           .get();
       if (!mounted) return;
       if (found.docs.isEmpty) {
-        showMsg(context, 'یہ نمبر رَاگیر چیٹ پر نہیں ملا');
+        showMsg(context, 'یہ جی میل رَاگیر چیٹ پر نہیں ملا');
         return;
       }
       final other = found.docs.first;
       if (other.id == me.uid) {
-        showMsg(context, 'یہ آپ کا اپنا نمبر ہے');
+        showMsg(context, 'یہ آپ کا اپنا جی میل ہے');
         return;
       }
       final ids = [me.uid, other.id]..sort();
       final chatId = ids.join('_');
-      final otherName = (other.data()['name'] as String?) ?? phone;
+      final otherName = (other.data()['name'] as String?) ?? mail;
       await FirebaseFirestore.instance.collection('chats').doc(chatId).set({
         'participants': ids,
         'names': {me.uid: widget.name, other.id: otherName},
@@ -149,11 +147,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         textInputAction: TextInputAction.search,
         onChanged: (_) => setState(() {}),
         onSubmitted: (_) {
-          if (digits.length >= 10) findPerson();
+          if (isEmail) findPerson();
         },
         style: const TextStyle(fontSize: 20),
         decoration: InputDecoration(
-          hintText: 'نام یا نمبر سے تلاش کریں',
+          hintText: 'نام یا جی میل سے تلاش کریں',
           filled: true,
           fillColor: softBg,
           prefixIcon: const Icon(Icons.search, color: green, size: 28),
@@ -177,7 +175,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 
   Widget chatsTab(String myId) {
-    final isNumber = digits.length >= 10;
+    final isNumber = isEmail;
     return Column(
       children: [
         searchBox(),
@@ -209,7 +207,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                         child: CircularProgressIndicator(
                             strokeWidth: 3, color: Colors.white))
                     : const Icon(Icons.chat),
-                label: const Text('اس نمبر سے چیٹ شروع کریں',
+                label: const Text('اس جی میل سے چیٹ شروع کریں',
                     style: TextStyle(fontSize: 19)),
               ),
             ),
