@@ -51,7 +51,9 @@ jobs:
 
       - name: Make app icon
         continue-on-error: true
-        run: dart run flutter_launcher_icons
+        run: |
+          convert icon_fg.png -resize 118% -gravity center -background none -extent 1024x1024 icon_fg.png
+          dart run flutter_launcher_icons
 
       - name: Set app name
         run: sed -i 's/android:label="[^"]*"/android:label="Rahgeer Chat"/' android/app/src/main/AndroidManifest.xml
