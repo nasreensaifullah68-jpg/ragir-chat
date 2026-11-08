@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'avatar.dart';
 import 'call.dart';
+import 'video_ui.dart';
 
 const _green = Color(0xFF0F8A5F);
 
@@ -58,7 +59,7 @@ class _CallOverlayState extends State<CallOverlay> {
     final connected = s.phase == CallPhase.connected;
     final text = s.phase == CallPhase.outgoing
         ? 'گھنٹی جا رہی ہے…'
-        : (s.phase == CallPhase.connecting ? 'جڑ رہا ہے…' : clock(s.seconds));
+        : (s.phase == CallPhase.connecting ? 'جڑ رہا ہے… ${s.ice}' : clock(s.seconds));
     return Material(
       color: _green,
       child: SafeArea(
@@ -143,8 +144,8 @@ class _CallOverlayState extends State<CallOverlay> {
                     fontSize: 34,
                     fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
-            const Text('راہگیر چیٹ کال آ رہی ہے…',
-                style: TextStyle(color: Colors.white70, fontSize: 20)),
+            Text(s.video ? 'ویڈیو کال آ رہی ہے…' : 'راہگیر چیٹ کال آ رہی ہے…',
+                style: const TextStyle(color: Colors.white70, fontSize: 20)),
             const SizedBox(height: 70),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -178,12 +179,13 @@ class _CallOverlayState extends State<CallOverlay> {
             s.phase == CallPhase.connecting ||
             s.phase == CallPhase.connected;
         final showNote = !inCall && s.phase == CallPhase.idle && s.note != null;
-        final top = inCall || showNote;
+        final vid = s.video && inCall;
+        final top = (inCall && !vid) || showNote;
         return Stack(
           children: [
             Column(
               children: [
-                inCall
+                inCall && !vid
                     ? banner()
                     : (showNote ? noteBar() : const SizedBox.shrink()),
                 Expanded(
@@ -195,6 +197,9 @@ class _CallOverlayState extends State<CallOverlay> {
                 ),
               ],
             ),
+            vid
+                ? const Positioned.fill(child: VideoCallView())
+                : const SizedBox.shrink(),
             s.phase == CallPhase.incoming
                 ? Positioned.fill(child: incoming())
                 : const SizedBox.shrink(),
