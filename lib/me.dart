@@ -31,7 +31,7 @@ class MeTab extends StatelessWidget {
       stream:
           FirebaseFirestore.instance.collection('users').doc(myId).snapshots(),
       builder: (context, snap) {
-        final phone = (snap.data?.data()?['phone'] as String?) ?? '';
+        final phone = (snap.data?.data()?['email'] as String?) ?? '';
         return ListView(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
           children: [
@@ -78,7 +78,7 @@ class MeTab extends StatelessWidget {
             row(Icons.settings, green, 'اکاؤنٹ کی ترتیبات', () => soon(context)),
             row(Icons.lock, green, 'پرائیویسی اور سیکیورٹی',
                 () => soon(context)),
-            row(Icons.notifications, green, 'نوٹیفکیشنز', () => soon(context)),
+            row(Icons.notifications, green, 'نوٹیفکیशنز', () => soon(context)),
             row(Icons.help, green, 'مدد اور سپورٹ', () => soon(context)),
             row(Icons.logout, Colors.red, 'لاگ آؤٹ', onLogout),
           ],
@@ -161,8 +161,8 @@ class _StatsState extends State<_Stats> {
       ),
       child: Row(
         children: [
-          cell(friends, 'دوست'),
-          cell(channels, 'چینلز'),
+          cell(friends, 'दोस्त'),
+          cell(channels, 'चینلز'),
           cell(statuses, 'اسٹیٹس'),
         ],
       ),
