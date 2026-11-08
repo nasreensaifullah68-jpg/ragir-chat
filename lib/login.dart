@@ -12,17 +12,30 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final phone = TextEditingController();
+  final mail = TextEditingController();
   final pass = TextEditingController();
   bool loading = false;
   bool hide = true;
 
-  String? emailFromPhone() {
-    var digits = phone.text.replaceAll(RegExp(r'[^0-9]'), '');
-    if (digits.startsWith('92')) digits = digits.substring(2);
-    if (digits.startsWith('0')) digits = digits.substring(1);
-    if (digits.length != 10) return null;
-    return '92$digits@ragir.chat';
+  String? cleanMail() {
+    final e = mail.text.trim().toLowerCase();
+    return RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(e) ? e : null;
+  }
+
+  Future<void> forgot() async {
+    final email = cleanMail();
+    if (email == null) {
+      showMsg(context, 'پہلے اپنا جی میل لکھیں');
+      return;
+    }
+    try {
+      await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
+      if (mounted) {
+        showMsg(context, 'پاسورڈ بدلنے کا لنک آپ کے جی میل پر بھیج دیا (Spam بھی دیکھیں)');
+      }
+    } on FirebaseAuthException catch (e) {
+      if (mounted) showMsg(context, errText(e));
+    }
   }
 
   String errText(FirebaseAuthException e) {
@@ -30,9 +43,11 @@ class _LoginScreenState extends State<LoginScreen> {
       case 'user-not-found':
       case 'invalid-credential':
       case 'wrong-password':
-        return 'نمبر یا پاسورڈ غلط ہے';
+        return 'جی میل یا پاسورڈ غلط ہے';
+      case 'invalid-email':
+        return 'جی میل صحیح نہیں لکھا';
       case 'email-already-in-use':
-        return 'یہ نمبر پہلے سے رجسٹر ہے، "داخل ہوں" دبائیں';
+        return 'یہ جی میل پہلے سے رجسٹر ہے، "داخل ہوں" دبائیں';
       case 'weak-password':
         return 'پاسورڈ کم از کم 6 حروف کا رکھیں';
       case 'network-request-failed':
@@ -43,9 +58,9 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> submit(bool create) async {
-    final email = emailFromPhone();
+    final email = cleanMail();
     if (email == null) {
-      showMsg(context, 'پورا نمبر لکھیں');
+      showMsg(context, 'پورا جی میل لکھیں، جیسے name@gmail.com');
       return;
     }
     if (pass.text.length < 6) {
@@ -114,7 +129,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     child: Column(
                       children: [
-                        const Text('اپنے فون نمبر سے داخل ہوں',
+                        const Text('اپنے جی میل سے داخل ہوں',
                             style: TextStyle(
                                 fontSize: 22, fontWeight: FontWeight.bold)),
                         const SizedBox(height: 16),
@@ -123,12 +138,11 @@ class _LoginScreenState extends State<LoginScreen> {
                           child: Column(
                             children: [
                               TextField(
-                                controller: phone,
-                                keyboardType: TextInputType.phone,
-                                style: const TextStyle(fontSize: 24),
+                                controller: mail,
+                                keyboardType: TextInputType.emailAddress,
+                                style: const TextStyle(fontSize: 22),
                                 decoration: InputDecoration(
-                                  prefixText: '+92 ',
-                                  hintText: '3XX XXXXXXX',
+                                  hintText: 'name@gmail.com',
                                   filled: true,
                                   fillColor: softBg,
                                   border: OutlineInputBorder(
@@ -191,6 +205,11 @@ class _LoginScreenState extends State<LoginScreen> {
                             child: const Text('نیا کھاتا بنائیں',
                                 style: TextStyle(fontSize: 22)),
                           ),
+                        ),
+                        TextButton(
+                          onPressed: loading ? null : forgot,
+                          child: const Text('پاسورڈ بھول گئے؟',
+                              style: TextStyle(fontSize: 18)),
                         ),
                       ],
                     ),
