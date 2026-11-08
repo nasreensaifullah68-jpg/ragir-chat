@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'filter.dart';
+import 'live_camera.dart';
 import 'main.dart';
 
 export 'package:image_picker/image_picker.dart' show ImageSource;
@@ -60,15 +61,24 @@ Future<bool?> askQuality() async {
 Future<String?> pickAndUploadFrom(ImageSource source) async {
   final hd = await askQuality();
   if (hd == null) return null;
-  final x = await ImagePicker().pickImage(
-      source: source,
-      maxWidth: hd ? 2400 : 1280,
-      imageQuality: hd ? 92 : 70);
-  if (x == null) return null;
+  final nav0 = navKey.currentState;
+  if (nav0 == null) return null;
+  String? path;
+  if (source == ImageSource.camera) {
+    path = await nav0.push<String>(
+        MaterialPageRoute(builder: (_) => LiveCameraScreen(hd: hd)));
+  } else {
+    final x = await ImagePicker().pickImage(
+        source: source,
+        maxWidth: hd ? 2400 : 1280,
+        imageQuality: hd ? 92 : 70);
+    path = x?.path;
+  }
+  if (path == null) return null;
   final nav = navKey.currentState;
   if (nav == null) return null;
   final bytes = await nav.push<dynamic>(
-      MaterialPageRoute(builder: (_) => FilterScreen(path: x.path, hd: hd)));
+      MaterialPageRoute(builder: (_) => FilterScreen(path: path!, hd: hd)));
   if (bytes == null) return null;
   return uploadImageBytes(bytes);
 }
