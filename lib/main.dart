@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'call_ui.dart';
 import 'filter.dart';
+import 'gate.dart';
 import 'firebase_options.dart';
 import 'home.dart';
 import 'login.dart';
@@ -108,7 +109,7 @@ class HomeGate extends StatelessWidget {
         if (!snap.hasData) return const SplashScreen();
         final name = snap.data!.data()?['name'] as String?;
         if (name == null || name.isEmpty) return const NameScreen();
-        return HomeScreen(name: name);
+        return DeviceGate(child: HomeScreen(name: name));
       },
     );
   }
