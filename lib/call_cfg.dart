@@ -30,3 +30,9 @@ Map<String, dynamic> iceConfig() {
     'sdpSemantics': 'unified-plan',
   };
 }
+
+String candType(String c) {
+  if (c.contains(' typ relay')) return 'r';
+  if (c.contains(' typ srflx')) return 's';
+  return 'h';
+}
