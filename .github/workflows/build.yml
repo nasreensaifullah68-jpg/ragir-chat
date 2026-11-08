@@ -49,11 +49,15 @@ jobs:
 
       - run: flutter pub add record audioplayers gal video_player flutter_webrtc file_picker geolocator url_launcher google_fonts flutter_tts camera && flutter pub get
 
-      - name: Make app icon
+      - name: Enlarge icon logo
         continue-on-error: true
         run: |
-          convert icon_fg.png -resize 118% -gravity center -background none -extent 1024x1024 icon_fg.png
-          dart run flutter_launcher_icons
+          python3 -m pip install --break-system-packages pillow || python3 -m pip install pillow
+          python3 -c "from PIL import Image; im=Image.open('icon_fg.png').convert('RGBA'); n=int(1024*1.18); im=im.resize((n,n),Image.LANCZOS); o=(n-1024)//2; im.crop((o,o,o+1024,o+1024)).save('icon_fg.png')"
+
+      - name: Make app icon
+        continue-on-error: true
+        run: dart run flutter_launcher_icons
 
       - name: Set app name
         run: sed -i 's/android:label="[^"]*"/android:label="Rahgeer Chat"/' android/app/src/main/AndroidManifest.xml
