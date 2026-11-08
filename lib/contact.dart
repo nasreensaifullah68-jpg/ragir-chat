@@ -20,13 +20,13 @@ class _ContactScreenState extends State<ContactScreen> {
   }
 
   void go() {
-    final digits = c.text.replaceAll(RegExp(r'[^0-9]'), '');
-    if (digits.length < 10) {
-      showMsg(context, 'پورا نمبر لکھیں (10 ہندسے)');
+    final mail = c.text.trim().toLowerCase();
+    if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(mail)) {
+      showMsg(context, 'پورا جی میل لکھیں، جیسے name@gmail.com');
       return;
     }
     Navigator.pop(context);
-    widget.onFind(c.text);
+    widget.onFind(mail);
   }
 
   Widget action(IconData icon, Color color, String text) {
@@ -71,12 +71,12 @@ class _ContactScreenState extends State<ContactScreen> {
         children: [
           TextField(
             controller: c,
-            keyboardType: TextInputType.phone,
+            keyboardType: TextInputType.emailAddress,
             textInputAction: TextInputAction.search,
             onSubmitted: (_) => go(),
             style: const TextStyle(fontSize: 22),
             decoration: InputDecoration(
-              hintText: 'نمبر لکھیں (03XX XXXXXXX)',
+              hintText: 'جی میل لکھیں (name@gmail.com)',
               filled: true,
               fillColor: Colors.white,
               prefixIcon: const Icon(Icons.search, color: green, size: 28),
