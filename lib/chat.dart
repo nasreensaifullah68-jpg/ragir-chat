@@ -4,12 +4,14 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'attach.dart';
 import 'avatar.dart';
+import 'chat_bubble.dart';
 import 'call.dart';
 import 'camera.dart';
 import 'main.dart';
 import 'media.dart';
 import 'photo.dart';
 import 'react.dart';
+import 'ui.dart';
 
 class ChatScreen extends StatefulWidget {
   final String chatId;
@@ -27,6 +29,7 @@ class _ChatScreenState extends State<ChatScreen> {
   String? markedId;
   bool uploading = false;
   bool recording = false;
+  bool hasText = false;
 
   DocumentReference<Map<String, dynamic>> get chatRef =>
       FirebaseFirestore.instance.collection('chats').doc(widget.chatId);
@@ -38,6 +41,10 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   void initState() {
     super.initState();
+    controller.addListener(() {
+      final h = controller.text.trim().isNotEmpty;
+      if (h != hasText && mounted) setState(() => hasText = h);
+    });
     tick = Timer.periodic(const Duration(seconds: 30), (_) {
       if (mounted) setState(() {});
     });
@@ -104,13 +111,6 @@ class _ChatScreenState extends State<ChatScreen> {
     });
   }
 
-  String fmt(DateTime t) {
-    final l = t.toLocal();
-    final h = l.hour.toString().padLeft(2, '0');
-    final m = l.minute.toString().padLeft(2, '0');
-    return '$h:$m';
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -144,12 +144,23 @@ class _ChatScreenState extends State<ChatScreen> {
         ),
         backgroundColor: green,
         foregroundColor: Colors.white,
+        elevation: 0,
         actions: [
           IconButton(
+            tooltip: 'ویڈیو کال',
+            icon: const Icon(Icons.videocam, size: 28),
+            onPressed: () => soon(context),
+          ),
+          IconButton(
             tooltip: 'کال کریں',
-            icon: const Icon(Icons.call, size: 28),
+            icon: const Icon(Icons.call, size: 26),
             onPressed: () =>
                 CallService.instance.startCall(otherId, widget.otherName),
+          ),
+          IconButton(
+            tooltip: 'مزید',
+            icon: const Icon(Icons.more_vert),
+            onPressed: () => soon(context),
           ),
         ],
       ),
@@ -216,70 +227,11 @@ class _ChatScreenState extends State<ChatScreen> {
                           alignment: mine
                               ? Alignment.centerRight
                               : Alignment.centerLeft,
-                          child: Container(
-                            constraints: BoxConstraints(
-                                maxWidth:
-                                    MediaQuery.of(context).size.width * 0.75),
-                            margin: const EdgeInsets.symmetric(
-                                horizontal: 12, vertical: 4),
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 14, vertical: 10),
-                            decoration: BoxDecoration(
-                              color: mine
-                                  ? const Color(0xFFD6F5E5)
-                                  : Colors.white,
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                if (m['imageUrl'] != null ||
-                                    m['viewed'] == true)
-                                  PhotoBubble(
-                                      url: m['imageUrl'] as String?,
-                                      mode:
-                                          (m['photoMode'] as String?) ?? 'save',
-                                      mine: mine,
-                                      viewed: m['viewed'] == true,
-                                      msgRef: docs[i].reference),
-                                AttachBubble(m: m),
-                                if (m['audioUrl'] != null)
-                                  VoiceBubble(
-                                      url: m['audioUrl'] as String,
-                                      secs: ((m['audioSecs'] as num?) ?? 0)
-                                          .toInt()),
-                                if (((m['text'] as String?) ?? '').isNotEmpty)
-                                  Text((m['text'] as String?) ?? '',
-                                      style: const TextStyle(fontSize: 20)),
-                                ReactionRow(
-                                    reactions: Map<String, dynamic>.from(
-                                        (m['reactions'] as Map?) ?? {})),
-                                Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    if (ts != null)
-                                      Text(fmt(ts.toDate()),
-                                          style: const TextStyle(
-                                              fontSize: 12,
-                                              color: Colors.black54)),
-                                    if (mine) const SizedBox(width: 4),
-                                    if (mine)
-                                      Icon(
-                                        ts == null
-                                            ? Icons.access_time
-                                            : (read
-                                                ? Icons.done_all
-                                                : Icons.done),
-                                        size: 16,
-                                        color: read
-                                            ? Colors.blue
-                                            : Colors.black45,
-                                      ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
+                          child: MsgBubble(
+                              m: m,
+                              mine: mine,
+                              read: read,
+                              ref: docs[i].reference),
                           ),
                         );
                       },
@@ -297,63 +249,89 @@ class _ChatScreenState extends State<ChatScreen> {
                       onSend: sendVoice,
                       onCancel: () => setState(() => recording = false))
                   : Row(
-                children: [
-                  IconButton(
-                    onPressed: uploading
-                        ? null
-                        : () => run(() => sendAttachment(
-                            context, chatRef, me.uid)),
-                    icon: const Icon(Icons.attach_file, color: green, size: 30),
-                  ),
-                  IconButton(
-                    onPressed: uploading
-                        ? null
-                        : () => sendPhoto(ImageSource.gallery),
-                    icon: uploading
-                        ? const SizedBox(
-                            width: 24,
-                            height: 24,
-                            child: CircularProgressIndicator(strokeWidth: 3))
-                        : const Icon(Icons.photo, color: green, size: 30),
-                  ),
-                  IconButton(
-                    onPressed: uploading
-                        ? null
-                        : () => sendPhoto(ImageSource.camera),
-                    icon: const Icon(Icons.photo_camera, color: green, size: 30),
-                  ),
-                  IconButton(
-                    onPressed:
-                        uploading ? null : () => setState(() => recording = true),
-                    icon: const Icon(Icons.mic, color: green, size: 32),
-                  ),
-                  Expanded(
-                    child: TextField(
-                      controller: controller,
-                      minLines: 1,
-                      maxLines: 4,
-                      style: const TextStyle(fontSize: 20),
-                      decoration: InputDecoration(
-                        hintText: 'پیغام لکھیں',
-                        filled: true,
-                        fillColor: Colors.white,
-                        contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 12),
-                        border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(28)),
-                      ),
+                      children: [
+                        Expanded(
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(30),
+                              boxShadow: const [
+                                BoxShadow(
+                                    color: Color(0x1A000000),
+                                    blurRadius: 4,
+                                    offset: Offset(0, 1)),
+                              ],
+                            ),
+                            child: Row(
+                              children: [
+                                IconButton(
+                                  onPressed: () => soon(context),
+                                  icon: const Icon(Icons.emoji_emotions_outlined,
+                                      color: Colors.black45, size: 26),
+                                ),
+                                Expanded(
+                                  child: TextField(
+                                    controller: controller,
+                                    minLines: 1,
+                                    maxLines: 4,
+                                    style: const TextStyle(fontSize: 20),
+                                    decoration: const InputDecoration(
+                                      hintText: 'پیغام لکھیں',
+                                      border: InputBorder.none,
+                                      contentPadding:
+                                          EdgeInsets.symmetric(vertical: 12),
+                                    ),
+                                  ),
+                                ),
+                                IconButton(
+                                  onPressed: uploading
+                                      ? null
+                                      : () => run(() => sendAttachment(
+                                          context, chatRef, me.uid)),
+                                  icon: const Icon(Icons.attach_file,
+                                      color: green, size: 26),
+                                ),
+                                IconButton(
+                                  onPressed: uploading
+                                      ? null
+                                      : () => sendPhoto(ImageSource.gallery),
+                                  icon: uploading
+                                      ? const SizedBox(
+                                          width: 22,
+                                          height: 22,
+                                          child: CircularProgressIndicator(
+                                              strokeWidth: 3))
+                                      : const Icon(Icons.photo,
+                                          color: green, size: 26),
+                                ),
+                                IconButton(
+                                  onPressed: uploading
+                                      ? null
+                                      : () => sendPhoto(ImageSource.camera),
+                                  icon: const Icon(Icons.photo_camera,
+                                      color: green, size: 26),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        CircleAvatar(
+                          radius: 27,
+                          backgroundColor: green,
+                          child: IconButton(
+                            color: Colors.white,
+                            onPressed: hasText
+                                ? send
+                                : (uploading
+                                    ? null
+                                    : () => setState(() => recording = true)),
+                            icon: Icon(hasText ? Icons.send : Icons.mic,
+                                size: 28),
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  IconButton.filled(
-                    onPressed: send,
-                    style: IconButton.styleFrom(
-                        backgroundColor: green,
-                        foregroundColor: Colors.white),
-                    icon: const Icon(Icons.send),
-                  ),
-                ],
-              ),
             ),
           ),
         ],
