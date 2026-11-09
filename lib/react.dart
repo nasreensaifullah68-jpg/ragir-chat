@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'del.dart';
 import 'main.dart';
 import 'tts.dart';
@@ -111,6 +112,18 @@ Future<void> showReactSheet(
               onTap: () {
                 Navigator.pop(ctx);
                 setReaction(context, ref, null);
+              },
+            ),
+          if (text != null && text.trim().isNotEmpty)
+            ListTile(
+              leading: const Icon(Icons.copy, color: green),
+              title: const Text('کاپی کریں', style: TextStyle(fontSize: 19)),
+              onTap: () {
+                Navigator.pop(ctx);
+                Clipboard.setData(ClipboardData(text: text));
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                    content: Text('کاپی ہو گیا'),
+                    duration: Duration(seconds: 2)));
               },
             ),
           if (text != null && text.trim().isNotEmpty)
