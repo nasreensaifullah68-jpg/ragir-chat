@@ -81,7 +81,13 @@ jobs:
           done
 
       - name: Build small APK
-        run: flutter build apk --release --split-per-abi
+        run: |
+          for i in 1 2 3 4 5; do
+            flutter build apk --release --split-per-abi && break
+            echo "Build failed, attempt $i"
+            if [ "$i" = "5" ]; then exit 1; fi
+            sleep 60
+          done
 
       - name: Sign APK with our secret key
         env:
