@@ -7,6 +7,7 @@ import 'chat.dart';
 import 'chat_list.dart';
 import 'contact.dart';
 import 'main.dart';
+import 'pages.dart';
 import 'me.dart';
 import 'settings.dart';
 import 'status.dart';
@@ -299,7 +300,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             drawerItem(Icons.qr_code_scanner, 'QR کوڈ سے اسکین کریں', () => soon(context)),
             drawerItem(Icons.settings, 'سیٹنگز', openSettings),
             drawerItem(Icons.dark_mode, 'ڈارک موڈ', () => soon(context)),
-            drawerItem(Icons.info, 'ایپ کے بارے میں', () => soon(context)),
+            drawerItem(Icons.info, 'ایپ کے بارے میں', () {
+              Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const AboutPage()));
+            }),
             const Divider(),
             drawerItem(Icons.logout, 'لاگ آؤٹ', logout),
           ],
