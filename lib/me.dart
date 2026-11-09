@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'avatar.dart';
 import 'main.dart';
 import 'orbit.dart';
+import 'pages.dart';
 import 'ui.dart';
 
 class MeTab extends StatelessWidget {
@@ -22,6 +23,10 @@ class MeTab extends StatelessWidget {
         onTap: onTap,
       ),
     );
+  }
+
+  void open(BuildContext context, Widget page) {
+    Navigator.of(context).push(MaterialPageRoute(builder: (_) => page));
   }
 
   @override
@@ -75,11 +80,14 @@ class MeTab extends StatelessWidget {
             const SizedBox(height: 14),
             row(Icons.photo_camera, green, 'میری فوٹو بدلیں',
                 () => changePhoto(context)),
-            row(Icons.settings, green, 'اکاؤنٹ کی ترتیبات', () => soon(context)),
+            row(Icons.settings, green, 'اکاؤنٹ کی ترتیبات',
+                () => open(context, const AccountPage())),
             row(Icons.lock, green, 'پرائیویسی اور سیکیورٹی',
-                () => soon(context)),
-            row(Icons.notifications, green, 'نوٹیفکیشنز', () => soon(context)),
-            row(Icons.help, green, 'مدد اور سپورٹ', () => soon(context)),
+                () => open(context, const PrivacyPage())),
+            row(Icons.notifications, green, 'نوٹیفکیشنز',
+                () => open(context, const NotifyPage())),
+            row(Icons.help, green, 'مدد اور سپورٹ',
+                () => open(context, const HelpPage())),
             row(Icons.logout, Colors.red, 'لاگ آؤٹ', onLogout),
           ],
         );
