@@ -8,6 +8,7 @@ import 'filter.dart';
 import 'firebase_options.dart';
 import 'home.dart';
 import 'login.dart';
+import 'push.dart';
 import 'splash.dart';
 
 const green = Color(0xFF0F8A5F);
@@ -113,6 +114,7 @@ class HomeGate extends StatelessWidget {
           }, SetOptions(merge: true));
         }
         if (name == null || name.isEmpty) return const NameScreen();
+        PushService.init();
         return HomeScreen(name: name);
       },
     );
@@ -173,7 +175,7 @@ class _NameScreenState extends State<NameScreen> {
                 style: const TextStyle(fontSize: 26),
                 decoration: InputDecoration(
                   filled: true,
-                  fillColor: softBg,
+                  fillColor: Colors.white,
                   hintText: 'یہاں نام لکھیں',
                   border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(16)),
