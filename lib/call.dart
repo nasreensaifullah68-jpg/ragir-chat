@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'call_cfg.dart';
 import 'call_tone.dart';
+import 'push.dart';
 
 part 'call_extra.dart';
 
@@ -302,6 +303,8 @@ class CallService extends ChangeNotifier {
         return;
       }
       _docReady = true;
+      PushService.notify(otherId, 'call', myName,
+          this.video ? 'ویڈیو کال آ رہی ہے' : 'کال آ رہی ہے');
       for (final m in _pending) {
         _sendCand(m);
       }
