@@ -20,6 +20,7 @@ jobs:
 
       - uses: subosito/flutter-action@v2
         with:
+          flutter-version: "3.47.9"
           channel: stable
 
       - name: Create Android project if missing
@@ -109,10 +110,10 @@ jobs:
 
       - name: Build small APK
         run: |
-          for i in 1 2 3 4 5; do
+          for i in 1 2 3; do
             flutter build apk --release --split-per-abi && break
             echo "Build failed, attempt $i"
-            if [ "$i" = "5" ]; then exit 1; fi
+            if [ "$i" = "3" ]; then exit 1; fi
             sleep 60
           done
 
