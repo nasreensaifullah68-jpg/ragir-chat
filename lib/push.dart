@@ -7,7 +7,7 @@ import 'package:http/http.dart' as http;
 
 // Server link goes here later (full link ending with /api/notify).
 // While this is empty, no push is sent and nothing else changes.
-const pushUrl = '';
+const pushUrl = 'https://ragir-chat-push-server.vercel.app/api/notify';
 
 class PushService {
   static String? _uid;
