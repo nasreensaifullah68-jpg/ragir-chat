@@ -48,7 +48,7 @@ jobs:
           );
           EOF
 
-      - run: flutter pub add record audioplayers gal video_player flutter_webrtc file_picker geolocator url_launcher google_fonts flutter_tts camera shared_preferences crypto firebase_messaging http && flutter pub get
+      - run: flutter pub add record audioplayers gal:^2.0.0 video_player flutter_webrtc file_picker geolocator url_launcher google_fonts flutter_tts camera shared_preferences crypto firebase_messaging http && flutter pub get
 
       - name: Enlarge icon logo
         continue-on-error: true
