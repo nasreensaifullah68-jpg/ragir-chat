@@ -10,6 +10,7 @@ import 'camera.dart';
 import 'main.dart';
 import 'media.dart';
 import 'photo.dart';
+import 'push.dart';
 import 'react.dart';
 import 'ui.dart';
 
@@ -82,6 +83,7 @@ class _ChatScreenState extends State<ChatScreen> {
     controller.clear();
     try {
       await postMsg(chatRef, me.uid, {'text': text}, text);
+      PushService.notify(otherId, 'msg', 'نیا پیغام', text);
     } catch (e) {
       if (mounted) showMsg(context, 'خرابی: $e');
     }
