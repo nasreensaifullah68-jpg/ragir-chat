@@ -80,6 +80,33 @@ jobs:
             grep -n "minSdk" "$f"
           done
 
+      - name: Make notification channels for popups
+        run: |
+          D=android/app/src/main/kotlin/com/nasreen/ragirchat
+          mkdir -p "$D"
+          rm -f android/app/src/main/java/com/nasreen/ragirchat/MainActivity.java
+          cat > "$D/MainActivity.kt" <<'EOF'
+          package com.nasreen.ragirchat
+
+          import android.app.NotificationChannel
+          import android.app.NotificationManager
+          import android.os.Build
+          import android.os.Bundle
+          import io.flutter.embedding.android.FlutterActivity
+
+          class MainActivity : FlutterActivity() {
+              override fun onCreate(savedInstanceState: Bundle?) {
+                  super.onCreate(savedInstanceState)
+                  if (Build.VERSION.SDK_INT >= 26) {
+                      val m = getSystemService(NotificationManager::class.java)
+                      m.createNotificationChannel(NotificationChannel("calls", "Calls", NotificationManager.IMPORTANCE_HIGH))
+                      m.createNotificationChannel(NotificationChannel("messages", "Messages", NotificationManager.IMPORTANCE_HIGH))
+                  }
+              }
+          }
+          EOF
+          cat "$D/MainActivity.kt" | head -5
+
       - name: Build small APK
         run: |
           for i in 1 2 3 4 5; do
