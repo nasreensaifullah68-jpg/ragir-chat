@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'attach.dart';
+import 'fontpref.dart';
 import 'main.dart';
 import 'media.dart';
 import 'photo.dart';
@@ -70,12 +71,16 @@ class MsgBubble extends StatelessWidget {
                 secs: ((m['audioSecs'] as num?) ?? 0)
                     .toInt()),
           if (((m['text'] as String?) ?? '').isNotEmpty)
-            Text((m['text'] as String?) ?? '',
-                style: TextStyle(
-                    fontSize: 20,
-                    color: mine
-                        ? Colors.white
-                        : Colors.black87)),
+            ValueListenableBuilder<double>(
+              valueListenable: typeSize,
+              builder: (c, sz, _) => Text(
+                  (m['text'] as String?) ?? '',
+                  style: TextStyle(
+                      fontSize: sz,
+                      color: mine
+                          ? Colors.white
+                          : Colors.black87)),
+            ),
           ReactionRow(
               reactions: Map<String, dynamic>.from(
                   (m['reactions'] as Map?) ?? {})),
