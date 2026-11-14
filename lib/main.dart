@@ -8,6 +8,7 @@ import 'filter.dart';
 import 'firebase_options.dart';
 import 'home.dart';
 import 'login.dart';
+import 'keys.dart';
 import 'push.dart';
 import 'splash.dart';
 
@@ -108,10 +109,8 @@ class HomeGate extends StatelessWidget {
         }
         if (!snap.hasData) return const SplashScreen();
         final name = snap.data!.data()?['name'] as String?;
-        if (snap.data!.data()?['email'] == null && name != null) {
-          snap.data!.reference.set({
-            'email': (user.email ?? '').trim().toLowerCase(),
-          }, SetOptions(merge: true));
+        if (name != null && name.isNotEmpty) {
+          syncKeys(snap.data!.reference, snap.data!.data()!, user.email ?? '');
         }
         if (name == null || name.isEmpty) return const NameScreen();
         PushService.init();
