@@ -7,6 +7,7 @@ import 'avatar.dart';
 import 'chat_bubble.dart';
 import 'call.dart';
 import 'camera.dart';
+import 'fontpref.dart';
 import 'main.dart';
 import 'media.dart';
 import 'photo.dart';
@@ -39,9 +40,15 @@ class _ChatScreenState extends State<ChatScreen> {
       widget.chatId.split('_').firstWhere((x) => x != me.uid,
           orElse: () => me.uid);
 
+  void _sz() {
+    if (mounted) setState(() {});
+  }
+
   @override
   void initState() {
     super.initState();
+    loadTypeSize();
+    typeSize.addListener(_sz);
     controller.addListener(() {
       final h = controller.text.trim().isNotEmpty;
       if (h != hasText && mounted) setState(() => hasText = h);
@@ -53,6 +60,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
   @override
   void dispose() {
+    typeSize.removeListener(_sz);
     tick?.cancel();
     controller.dispose();
     super.dispose();
@@ -275,9 +283,9 @@ class _ChatScreenState extends State<ChatScreen> {
                                 Expanded(
                                   child: TextField(
                                     controller: controller,
-                                    minLines: 1,
+                                    minLines: hasText ? 2 : 1,
                                     maxLines: 4,
-                                    style: const TextStyle(fontSize: 20),
+                                    style: TextStyle(fontSize: typeSize.value),
                                     decoration: const InputDecoration(
                                       hintText: 'پیغام لکھیں',
                                       border: InputBorder.none,
