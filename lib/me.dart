@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'avatar.dart';
+import 'fontpref.dart';
 import 'main.dart';
 import 'orbit.dart';
 import 'pages.dart';
@@ -82,6 +83,8 @@ class MeTab extends StatelessWidget {
                 () => changePhoto(context)),
             row(Icons.settings, green, 'اکاؤنٹ کی ترتیبات',
                 () => open(context, const AccountPage())),
+            row(Icons.text_fields, green, 'لکھائی کا سائز',
+                () => pickTypeSize(context)),
             row(Icons.lock, green, 'پرائیویسی اور سیکیورٹی',
                 () => open(context, const PrivacyPage())),
             row(Icons.notifications, green, 'نوٹیفکیشنز',
