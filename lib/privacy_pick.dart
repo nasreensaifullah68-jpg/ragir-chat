@@ -3,13 +3,13 @@ import 'main.dart';
 
 const _opts = [
   ['public', 'سب کے لیے کھلا', 'کوئی بھی مجھے ڈھونڈ کر پیغام بھیج سکتا ہے'],
-  ['friends', 'صرف میرے دوست', 'سرچ میں نہیں آؤں گا (دوست منظوری جلد آ رہی ہے)'],
-  ['me', 'صرف میں', 'کوئی مجھے سرچ نہیں کر سکتا'],
+  ['friends', 'صرف میرے دوست', 'سرچ میں آؤں گا، پر پیغام تبھی جب میں دوستی منظور کروں'],
+  ['me', 'صرف میں', 'کوئی مجھے سرچ یا پیغام نہیں کر سکتا'],
 ];
 
 // پرائیویسی کے فیلڈ جو یوزر ڈاک میں لکھنے ہیں
 Map<String, dynamic> privacyFields(String v) =>
-    {'privacy': v, 'discover': v == 'public'};
+    {'privacy': v, 'discover': v != 'me'};
 
 class PrivacyChoice extends StatelessWidget {
   final String value;
