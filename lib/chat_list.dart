@@ -136,7 +136,7 @@ class _ChatListState extends State<ChatList> {
         return ListView.separated(
           padding: const EdgeInsets.only(bottom: 90),
           itemCount: rows.length,
-          separatorBuilder: (_, __) => const Divider(height: 1, indent: 84),
+          separatorBuilder: (_, __) => const Divider(height: 1, indent: 76),
           itemBuilder: (context, i) {
             final r = rows[i];
             final last = (r.d['lastMessage'] as String?) ?? 'پیغام لکھیں';
@@ -152,15 +152,15 @@ class _ChatListState extends State<ChatList> {
             return ListTile(
               tileColor: Colors.white,
               contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-              leading: UserAvatar(uid: r.otherId, name: r.otherName),
+                  const EdgeInsets.symmetric(horizontal: 14, vertical: 3),
+              leading: UserAvatar(uid: r.otherId, name: r.otherName, radius: 24),
               title: Row(
                 children: [
                   Flexible(
                     child: Text(r.otherName,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
-                            fontSize: 21, fontWeight: FontWeight.bold)),
+                            fontSize: 19, fontWeight: FontWeight.bold)),
                   ),
                   if (favs.contains(r.id))
                     const Padding(
@@ -174,7 +174,7 @@ class _ChatListState extends State<ChatList> {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                      fontSize: 17,
+                      fontSize: 15,
                       color: unread ? Colors.black : Colors.black54,
                       fontWeight: unread ? FontWeight.bold : FontWeight.normal)),
               trailing: Column(
@@ -183,7 +183,7 @@ class _ChatListState extends State<ChatList> {
                 children: [
                   Text(timeText(upd),
                       style: TextStyle(
-                          fontSize: 13,
+                          fontSize: 12,
                           color: unread ? green : Colors.black45)),
                   const SizedBox(height: 6),
                   unread
