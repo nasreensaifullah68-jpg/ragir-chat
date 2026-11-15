@@ -46,7 +46,8 @@ Future<void> syncKeys(DocumentReference<Map<String, dynamic>> ref,
       ..sort();
     final up = <String, dynamic>{};
     if (old.join('|') != keys.join('|')) up['keys'] = keys;
-    if (d['discover'] == null) up['discover'] = true;
+    final disc = ((d['privacy'] as String?) ?? 'public') != 'me';
+    if (d['discover'] != disc) up['discover'] = disc;
     if (d['email'] == null && mail.isNotEmpty) up['email'] = mail;
     if (up.isNotEmpty) await ref.set(up, SetOptions(merge: true));
   } catch (_) {}
