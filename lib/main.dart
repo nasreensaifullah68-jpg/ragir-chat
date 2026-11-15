@@ -9,6 +9,7 @@ import 'firebase_options.dart';
 import 'home.dart';
 import 'login.dart';
 import 'keys.dart';
+import 'privacy_pick.dart';
 import 'push.dart';
 import 'splash.dart';
 
@@ -130,6 +131,7 @@ class NameScreen extends StatefulWidget {
 class _NameScreenState extends State<NameScreen> {
   final controller = TextEditingController();
   bool loading = false;
+  String privacy = 'public';
 
   Future<void> save() async {
     final name = controller.text.trim();
@@ -145,6 +147,7 @@ class _NameScreenState extends State<NameScreen> {
         'name': name,
         'email': mail,
         'createdAt': FieldValue.serverTimestamp(),
+        ...privacyFields(privacy),
       }, SetOptions(merge: true));
     } catch (e) {
       if (!mounted) return;
@@ -160,8 +163,7 @@ class _NameScreenState extends State<NameScreen> {
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
+          child: ListView(
             children: [
               const Icon(Icons.account_circle, color: green, size: 110),
               const SizedBox(height: 16),
@@ -180,7 +182,14 @@ class _NameScreenState extends State<NameScreen> {
                       borderRadius: BorderRadius.circular(16)),
                 ),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 20),
+              const Text('آپ کو کون ڈھونڈ سکے؟',
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 8),
+              PrivacyChoice(
+                  value: privacy,
+                  onChanged: (v) => setState(() => privacy = v)),
+              const SizedBox(height: 16),
               SizedBox(
                 width: double.infinity,
                 height: 64,
@@ -204,3 +213,4 @@ class _NameScreenState extends State<NameScreen> {
     );
   }
 }
+
