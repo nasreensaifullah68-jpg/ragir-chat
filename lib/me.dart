@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'avatar.dart';
 import 'fontpref.dart';
+import 'friends.dart';
 import 'main.dart';
 import 'orbit.dart';
 import 'pages.dart';
@@ -85,6 +86,8 @@ class MeTab extends StatelessWidget {
                 () => open(context, const AccountPage())),
             row(Icons.text_fields, green, 'لکھائی کا سائز',
                 () => pickTypeSize(context)),
+            row(Icons.group_add, green, 'دوستی کی درخواستیں',
+                () => open(context, const FriendRequestsPage())),
             row(Icons.lock, green, 'پرائیویسی اور سیکیورٹی',
                 () => open(context, const PrivacyPage())),
             row(Icons.notifications, green, 'نوٹیفکیشنز',
