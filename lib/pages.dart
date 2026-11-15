@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'main.dart';
+import 'privacy_pick.dart';
 import 'ui.dart';
 
 Widget _page(String title, List<Widget> kids) {
@@ -58,6 +59,22 @@ class AccountPage extends StatefulWidget {
 class _AccountPageState extends State<AccountPage> {
   final ctrl = TextEditingController();
   bool busy = false;
+  String privacy = 'public';
+
+  Future<void> savePrivacy(String v) async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+    setState(() => privacy = v);
+    try {
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .set(privacyFields(v), SetOptions(merge: true));
+      if (mounted) showMsg(context, 'پرائیویسی محفوظ ہو گئی');
+    } catch (e) {
+      if (mounted) showMsg(context, 'خرابی: $e');
+    }
+  }
 
   @override
   void initState() {
@@ -65,7 +82,10 @@ class _AccountPageState extends State<AccountPage> {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid != null) {
       FirebaseFirestore.instance.collection('users').doc(uid).get().then((d) {
-        if (mounted) ctrl.text = (d.data()?['name'] as String?) ?? '';
+        if (!mounted) return;
+        ctrl.text = (d.data()?['name'] as String?) ?? '';
+        setState(() =>
+            privacy = (d.data()?['privacy'] as String?) ?? 'public');
       });
     }
   }
@@ -121,6 +141,12 @@ class _AccountPageState extends State<AccountPage> {
         ),
         const SizedBox(height: 12),
         _btn('نام محفوظ کریں', Icons.check, busy ? null : saveName),
+      ]),
+      _card([
+        const Text('آپ کو کون ڈھونڈ سکے؟',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 8),
+        PrivacyChoice(value: privacy, onChanged: savePrivacy),
       ]),
       _card([
         const Text('جی میل',
