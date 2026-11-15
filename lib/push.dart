@@ -11,6 +11,7 @@ const pushUrl = 'https://ragir-chat-push-server.vercel.app/api/notify';
 
 class PushService {
   static String? _uid;
+  static String myName = '';
 
   // Asks for notification permission and saves this phone's token.
   static Future<void> init() async {
@@ -18,6 +19,13 @@ class PushService {
     if (user == null || _uid == user.uid) return;
     _uid = user.uid;
     try {
+      try {
+        final d = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .get();
+        myName = (d.data()?['name'] as String?) ?? '';
+      } catch (_) {}
       final m = FirebaseMessaging.instance;
       await m.requestPermission();
       final t = await m.getToken();
@@ -53,7 +61,7 @@ class PushService {
             body: jsonEncode({
               'toUid': toUid,
               'kind': kind,
-              'title': title,
+              'title': (kind == 'msg' && myName.isNotEmpty) ? myName : title,
               'body': body,
             }),
           )
