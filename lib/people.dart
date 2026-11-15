@@ -31,12 +31,53 @@ Future<List<PersonDoc>> searchPeople(String raw) async {
   }
 }
 
+Future<bool> _chatExists(String chatId) async {
+  try {
+    final s =
+        await FirebaseFirestore.instance.collection('chats').doc(chatId).get();
+    return s.exists;
+  } catch (_) {
+    return false;
+  }
+}
+
 Future<void> openChatWith(
     BuildContext context, String myName, PersonDoc other) async {
   final me = FirebaseAuth.instance.currentUser!;
   final ids = [me.uid, other.id]..sort();
   final chatId = ids.join('_');
   final otherName = (other.data()['name'] as String?) ?? 'دوست';
+  final priv = (other.data()['privacy'] as String?) ?? 'public';
+  if (priv != 'public' && !await _chatExists(chatId)) {
+    final fr = FirebaseFirestore.instance.collection('friendReqs').doc(chatId);
+    final s = await fr.get();
+    final st = s.data()?['status'];
+    if (st != 'accepted') {
+      if (!context.mounted) return;
+      if (priv == 'me') {
+        showMsg(context, 'یہ شخص کسی سے رابطہ قبول نہیں کرتا');
+      } else if (st == 'pending') {
+        showMsg(
+            context,
+            s.data()?['from'] == me.uid
+                ? 'درخواست بھیجی جا چکی ہے، منظوری کا انتظار کریں'
+                : 'اس کی درخواست آپ کے پاس ہے: مینو میں "دوستی کی درخواستیں" دیکھیں');
+      } else {
+        await fr.set({
+          'from': me.uid,
+          'to': other.id,
+          'fromName': myName,
+          'status': 'pending',
+          'participants': ids,
+          'at': FieldValue.serverTimestamp(),
+        });
+        if (context.mounted) {
+          showMsg(context, 'دوستی کی درخواست بھیج دی، منظوری کا انتظار کریں');
+        }
+      }
+      return;
+    }
+  }
   await FirebaseFirestore.instance.collection('chats').doc(chatId).set({
     'participants': ids,
     'names': {me.uid: myName, other.id: otherName},
