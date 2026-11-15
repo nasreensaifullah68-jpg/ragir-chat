@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'main.dart';
+import 'phone_card.dart';
 import 'privacy_pick.dart';
 import 'ui.dart';
 
@@ -148,6 +149,7 @@ class _AccountPageState extends State<AccountPage> {
         const SizedBox(height: 8),
         PrivacyChoice(value: privacy, onChanged: savePrivacy),
       ]),
+      const PhoneCard(),
       _card([
         const Text('جی میل',
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
