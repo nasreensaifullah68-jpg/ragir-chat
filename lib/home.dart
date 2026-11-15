@@ -145,7 +145,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         onSubmitted: (_) {
           if (canFind) findPerson();
         },
-        style: const TextStyle(fontSize: 20),
+        style: const TextStyle(fontSize: 18),
         decoration: InputDecoration(
           hintText: 'نام، جی میل یا نمبر سے تلاش کریں',
           filled: true,
@@ -161,7 +161,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   },
                 ),
           contentPadding:
-              const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(30),
               borderSide: BorderSide.none),
@@ -189,7 +189,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             padding: const EdgeInsets.fromLTRB(12, 10, 12, 4),
             child: SizedBox(
               width: double.infinity,
-              height: 56,
+              height: 44,
               child: FilledButton.icon(
                 style: FilledButton.styleFrom(
                   backgroundColor: green,
@@ -205,7 +205,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                             strokeWidth: 3, color: Colors.white))
                     : const Icon(Icons.chat),
                 label: const Text('تلاش کریں',
-                    style: TextStyle(fontSize: 19)),
+                    style: TextStyle(fontSize: 17)),
               ),
             ),
           ),
@@ -224,12 +224,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   PreferredSizeWidget chatsBar() {
     return AppBar(
-      toolbarHeight: 70,
+      toolbarHeight: 60,
       backgroundColor: green,
       foregroundColor: Colors.white,
       centerTitle: true,
       leading: IconButton(
-        icon: const Icon(Icons.search, size: 30),
+        icon: const Icon(Icons.search, size: 26),
         onPressed: () => searchFocus.requestFocus(),
       ),
       title: Row(
@@ -251,7 +251,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       actions: [
         Builder(
           builder: (ctx) => IconButton(
-            icon: const Icon(Icons.menu, size: 32),
+            icon: const Icon(Icons.menu, size: 28),
             onPressed: () => Scaffold.of(ctx).openEndDrawer(),
           ),
         ),
@@ -328,7 +328,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 )
               : null),
       floatingActionButton: tab == 0
-          ? FloatingActionButton(
+          ? FloatingActionButton.small(
               backgroundColor: green,
               foregroundColor: Colors.white,
               tooltip: 'نئی چیٹ',
@@ -344,6 +344,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   ? StatusScreen(name: widget.name)
                   : MeTab(name: widget.name, onLogout: logout)),
       bottomNavigationBar: NavigationBar(
+        height: 64,
         backgroundColor: Colors.white,
         indicatorColor: const Color(0xFFD6F5E5),
         selectedIndex: tab,
