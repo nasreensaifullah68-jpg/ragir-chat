@@ -160,13 +160,13 @@ class _ChatScreenState extends State<ChatScreen> {
         actions: [
           IconButton(
             tooltip: 'ویڈیو کال',
-            icon: const Icon(Icons.videocam, size: 28),
+            icon: const Icon(Icons.videocam, size: 24),
             onPressed: () => CallService.instance
                 .startCall(otherId, widget.otherName, video: true),
           ),
           IconButton(
             tooltip: 'کال کریں',
-            icon: const Icon(Icons.call, size: 26),
+            icon: const Icon(Icons.call, size: 22),
             onPressed: () =>
                 CallService.instance.startCall(otherId, widget.otherName),
           ),
@@ -280,7 +280,7 @@ class _ChatScreenState extends State<ChatScreen> {
                                 IconButton(
                                   onPressed: () => soon(context),
                                   icon: const Icon(Icons.emoji_emotions_outlined,
-                                      color: Colors.black45, size: 26),
+                                      color: Colors.black45, size: 23),
                                 ),
                                 Expanded(
                                   child: TextField(
@@ -302,7 +302,7 @@ class _ChatScreenState extends State<ChatScreen> {
                                       : () => run(() => sendAttachment(
                                           context, chatRef, me.uid)),
                                   icon: const Icon(Icons.attach_file,
-                                      color: green, size: 26),
+                                      color: green, size: 23),
                                 ),
                                 IconButton(
                                   onPressed: uploading
@@ -315,14 +315,14 @@ class _ChatScreenState extends State<ChatScreen> {
                                           child: CircularProgressIndicator(
                                               strokeWidth: 3))
                                       : const Icon(Icons.photo,
-                                          color: green, size: 26),
+                                          color: green, size: 23),
                                 ),
                                 IconButton(
                                   onPressed: uploading
                                       ? null
                                       : () => sendPhoto(ImageSource.camera),
                                   icon: const Icon(Icons.photo_camera,
-                                      color: green, size: 26),
+                                      color: green, size: 23),
                                 ),
                               ],
                             ),
