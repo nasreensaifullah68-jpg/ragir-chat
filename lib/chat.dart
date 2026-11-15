@@ -106,6 +106,7 @@ class _ChatScreenState extends State<ChatScreen> {
       if (url != null) {
         await postMsg(chatRef, me.uid,
             {'imageUrl': url, 'photoMode': mode}, '📷 فوٹو');
+        PushService.notify(otherId, 'msg', 'نیا پیغام', '📷 فوٹو');
       }
     });
   }
@@ -117,6 +118,7 @@ class _ChatScreenState extends State<ChatScreen> {
       if (url != null) {
         await postMsg(chatRef, me.uid,
             {'audioUrl': url, 'audioSecs': secs}, '🎤 آواز');
+        PushService.notify(otherId, 'msg', 'نیا پیغام', '🎤 آواز');
       }
     });
   }
